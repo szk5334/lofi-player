@@ -29,7 +29,6 @@
   }
   .deck{width:100%; max-width:640px}
 
-  /* ---- header ---- */
   .top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px}
   .mark{
     font-family:"Big Shoulders Display",sans-serif; font-weight:700;
@@ -45,7 +44,6 @@
   .status.live .dot{background:var(--lamp); box-shadow:0 0 8px var(--lamp); animation:pulse 3.4s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
-  /* ---- window ---- */
   .window{
     position:relative; aspect-ratio:16/10; border-radius:3px; overflow:hidden;
     background:var(--deck); border:1px solid var(--edge);
@@ -74,7 +72,6 @@
     letter-spacing:.14em; color:var(--dust); text-transform:uppercase; max-width:34ch;
   }
 
-  /* ---- tuning strip: one tick per track in the current shuffle block ---- */
   .strip{
     position:relative; height:22px; margin-top:8px;
     border-left:1px solid var(--edge); border-right:1px solid var(--edge);
@@ -92,17 +89,17 @@
     background:var(--lamp); border-radius:50%;
   }
 
-  /* ---- now playing ---- */
   .now{margin-top:18px; min-height:74px}
   .title{
     font-family:"Newsreader",Georgia,serif; font-style:italic; font-weight:400;
     font-size:clamp(21px,5.2vw,30px); line-height:1.2; margin:0 0 6px;
-    overflow-wrap:anywhere;
+    overflow-wrap:anywhere; transition:opacity .45s ease;
   }
+  .title.blend{opacity:.55}
   .line{font-size:11px; letter-spacing:.13em; color:var(--dust); text-transform:uppercase}
   .line span{color:var(--haze); margin:0 8px}
+  .line em.mixing{font-style:normal; color:var(--glow)}
 
-  /* ---- controls ---- */
   .bar{display:flex; align-items:center; gap:16px; margin-top:20px; padding-top:16px; border-top:1px solid var(--edge)}
   .play{
     flex:none; width:46px; height:46px; border-radius:50%;
@@ -163,6 +160,7 @@
     </div>
     <div class="line" style="margin-top:4px">
       <em id="clock" style="font-style:normal">0:00</em><span>/</span><em id="dur" style="font-style:normal">0:00</em>
+      <em id="mixing" class="mixing" style="display:none; margin-left:10px">mixing</em>
     </div>
   </div>
 
@@ -188,24 +186,29 @@
 
 /* ------------------------------------------------------------------ *
  * CONFIG
- * BASE  — must be same-origin with this page for the visualiser to
- *         read audio data. Both live under https://szk5334.github.io,
- *         so this works. If you ever put the site on a custom domain,
- *         the origins diverge and the analyser returns silence.
- * EPOCH — station sign-on. Every listener derives the same schedule
- *         from this instant, so don't change it once you're live.
+ *
+ * FADE — crossfade length in seconds. This is load-bearing for the
+ *   sync: with an overlap, each track only advances the station by
+ *   (duration - FADE), so the schedule is walked over those effective
+ *   durations. Changing FADE changes the block length and therefore
+ *   reshuffles the schedule for everyone. Pick a number and leave it.
+ *
+ * EPOCH — station sign-on. Same warning, more so.
  * ------------------------------------------------------------------ */
 var CONFIG = {
   BASE:  "https://szk5334.github.io/lofi-library/",
-  EPOCH: Date.UTC(2026, 0, 1, 0, 0, 0)
+  EPOCH: Date.UTC(2026, 0, 1, 0, 0, 0),
+  FADE:  5
 };
 
 var $ = function(id){ return document.getElementById(id); };
+var noop = function(){};
 var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- state ---------- */
 var tracks = [], order = [], idx = 0, block = 0, total = 0;
-var synced = false, started = false, pendingOffset = 0, misses = 0, preloader = null;
+var synced = false, started = false, misses = 0;
+var active = 0, fading = false, armed = null;
 
 /* ---------- deterministic shuffle ---------- */
 function mulberry32(a){
@@ -225,15 +228,21 @@ function shuffle(arr, seed){
   return a;
 }
 
-/* Where the station is at a given wall-clock instant. */
+/* How much of the station's clock one track consumes. Overlap means
+   less than its full length. */
+function slot(t){
+  return Math.max((t.dur || 0) - CONFIG.FADE, 1);
+}
+
 function scheduleAt(when){
   var elapsed = Math.max(0, (when - CONFIG.EPOCH) / 1000);
   var b   = Math.floor(elapsed / total);
   var off = elapsed - b * total;
   var ord = shuffle(tracks, b);
   for (var i = 0; i < ord.length; i++){
-    if (off < ord[i].dur) return { order: ord, index: i, offset: off, block: b };
-    off -= ord[i].dur;
+    var s = slot(ord[i]);
+    if (off < s) return { order: ord, index: i, offset: off, block: b };
+    off -= s;
   }
   return { order: ord, index: 0, offset: 0, block: b };
 }
@@ -243,15 +252,15 @@ function url(t){
   return CONFIG.BASE + t.file.split("/").map(encodeURIComponent).join("/");
 }
 function prettify(file){
-  var n = file.split("/").pop().replace(/\.mp3$/i, "");
-  return n.replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim();
+  return file.split("/").pop().replace(/\.mp3$/i, "")
+             .replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim();
 }
 function fmt(s){
   if (!isFinite(s) || s < 0) s = 0;
-  var m = Math.floor(s / 60);
-  var r = Math.floor(s % 60);
+  var m = Math.floor(s / 60), r = Math.floor(s % 60);
   return m + ":" + (r < 10 ? "0" : "") + r;
 }
+function label(t){ return t ? (t.title || prettify(t.file)) : "\u2014"; }
 
 function load(){
   return fetch(CONFIG.BASE + "playlist.json", { cache: "no-cache" })
@@ -273,93 +282,216 @@ function load(){
     });
 }
 
-/* ---------- audio ---------- */
-var audio = new Audio();
-audio.preload = "auto";
-audio.volume = 0.75;
+/* ------------------------------------------------------------------ *
+ * AUDIO
+ *
+ * Two decks, like a real one. Each <audio> gets its own source node
+ * (createMediaElementSource can only be called once per element), its
+ * own gain for the fade, and both feed a shared mix bus.
+ *
+ *   deck A -> gainA -\
+ *                     >-- mix --+--> analyser        (visualiser tap)
+ *   deck B -> gainB -/          \--> master -> out   (volume)
+ *
+ * The analyser hangs off mix rather than master so the smoke keeps
+ * moving when you pull the volume down.
+ * ------------------------------------------------------------------ */
+var decks = [
+  { el: new Audio(), gain: null, src: null },
+  { el: new Audio(), gain: null, src: null }
+];
+decks.forEach(function(d){ d.el.preload = "auto"; });
 
-var actx = null, analyser = null, freq = null;
+var actx = null, analyser = null, freq = null, mix = null, master = null;
+var vol = 0.75;
 
 function graph(){
   if (actx) return;
   var AC = window.AudioContext || window.webkitAudioContext;
   actx = new AC();
-  var src = actx.createMediaElementSource(audio);
+
+  mix    = actx.createGain();
+  master = actx.createGain();
+  master.gain.value = vol;
+
   analyser = actx.createAnalyser();
   analyser.fftSize = 1024;
   analyser.smoothingTimeConstant = 0.84;
-  src.connect(analyser);
-  analyser.connect(actx.destination);
   freq = new Uint8Array(analyser.frequencyBinCount);
+
+  mix.connect(analyser);
+  mix.connect(master);
+  master.connect(actx.destination);
+
+  decks.forEach(function(d){
+    d.node = actx.createMediaElementSource(d.el);
+    d.gain = actx.createGain();
+    d.gain.gain.value = 0;
+    d.node.connect(d.gain);
+    d.gain.connect(mix);
+  });
 }
 
+/* Equal-power curves. A linear crossfade dips in the middle, because
+   two uncorrelated signals at 0.5 sum to less than one at 1.0 — you
+   hear it as a small hole. sin/cos keeps the power constant. */
+function curve(rising){
+  var n = 64, c = new Float32Array(n);
+  for (var i = 0; i < n; i++){
+    var t = (i / (n - 1)) * Math.PI / 2;
+    c[i] = rising ? Math.sin(t) : Math.cos(t);
+  }
+  return c;
+}
+var UP = curve(true), DOWN = curve(false);
+
+function applyFade(param, rising, secs){
+  var t0 = actx.currentTime;
+  try {
+    param.cancelScheduledValues(t0);
+    param.setValueCurveAtTime(rising ? UP : DOWN, t0, secs);
+  } catch(e){
+    /* older Safari throws on overlapping curves */
+    param.cancelScheduledValues(t0);
+    param.setValueAtTime(param.value, t0);
+    param.linearRampToValueAtTime(rising ? 1 : 0, t0 + secs);
+  }
+}
+
+/* iOS won't let an <audio> element play programmatically unless it has
+   been played once from a real user gesture. Deck B never gets one, so
+   we spend the tune-in tap on both. */
+function unlock(){
+  decks.forEach(function(d){
+    var p = d.el.play();
+    if (p && p.then) p.then(function(){ d.el.pause(); }).catch(noop);
+    else { try { d.el.pause(); } catch(e){} }
+  });
+}
+
+function setSrc(d, t){
+  var u = url(t);
+  if (d.src === u) return;
+  d.el.src = u;
+  d.src = u;
+  d.el.load();
+}
+
+/* Hard start — tune-in, and gross-drift correction. No overlap here. */
 function cue(i, offset){
   idx = i;
-  var t = order[idx];
-  pendingOffset = offset || 0;
-  preloader = null;
-  audio.src = url(t);
-  audio.load();
-  var p = audio.play();
-  if (p && p.catch) p.catch(function(){});
-  paintMeta();
-}
+  armed = null;
+  fading = false;
+  var a = decks[active], b = decks[1 - active];
 
-audio.addEventListener("loadedmetadata", function(){
-  misses = 0;
-  if (pendingOffset > 1 && pendingOffset < (audio.duration || Infinity) - 2){
-    try { audio.currentTime = pendingOffset; } catch(e){}
-  }
-  pendingOffset = 0;
-  paintMeta();
-});
+  b.el.pause();
+  b.gain.gain.cancelScheduledValues(actx.currentTime);
+  b.gain.gain.value = 0;
 
-audio.addEventListener("error", function(){
-  // A dead file shouldn't take the station down. Step past it.
-  if (++misses > 8){ fail("Too many tracks failed to load. Check the library URLs."); return; }
-  advance();
-});
-
-audio.addEventListener("ended", advance);
-
-/* Recomputing from the clock on every boundary is self-correcting —
-   no drift accumulates, and nothing stutters mid-track. */
-function advance(){
-  if (synced){
-    var s = scheduleAt(Date.now());
-    order = s.order; block = s.block;
-    cue(s.index, s.offset);
-  } else {
-    cue((idx + 1) % order.length, 0);
-  }
-}
-
-function peekNext(){
-  if (!synced) return order[(idx + 1) % order.length];
-  var remain = Math.max(0, (audio.duration || order[idx].dur) - audio.currentTime);
-  var s = scheduleAt(Date.now() + (remain + 1) * 1000);
-  return s.order[s.index];
-}
-
-audio.addEventListener("timeupdate", function(){
-  var d = audio.duration || order[idx].dur || 0;
-  $("clock").textContent = fmt(audio.currentTime);
-  $("dur").textContent = fmt(d);
-  if (!preloader && d && d - audio.currentTime < 25){
-    var n = peekNext();
-    if (n){
-      preloader = new Audio();
-      preloader.preload = "auto";
-      preloader.src = url(n);
+  setSrc(a, order[idx]);
+  var seek = function(){
+    if (offset > 1 && offset < (a.el.duration || Infinity) - 2){
+      try { a.el.currentTime = offset; } catch(e){}
     }
-  }
+    a.el.removeEventListener("loadedmetadata", seek);
+  };
+  if (a.el.readyState >= 1) seek();
+  else a.el.addEventListener("loadedmetadata", seek);
+
+  a.gain.gain.cancelScheduledValues(actx.currentTime);
+  a.gain.gain.value = 0;
+  applyFade(a.gain.gain, true, 0.6);
+  a.el.play().catch(noop);
+
+  paintMeta();
+}
+
+/* What plays after the current track, taken from the clock so the
+   station self-corrects instead of accumulating drift. */
+function nextSlot(){
+  if (!synced) return { index: (idx + 1) % order.length, track: order[(idx + 1) % order.length] };
+  var a = decks[active].el;
+  var s = slot(order[idx]);
+  var remain = Math.max(0, s - (a.currentTime || 0));
+  var sc = scheduleAt(Date.now() + (remain + 0.5) * 1000);
+  return { index: sc.index, track: sc.order[sc.index], order: sc.order, block: sc.block };
+}
+
+function armNext(){
+  armed = nextSlot();
+  if (armed && armed.track) setSrc(decks[1 - active], armed.track);
+}
+
+function startCrossfade(){
+  if (fading) return;
+  if (!armed) armNext();
+  if (!armed || !armed.track) return;
+
+  var from = active, to = 1 - active;
+  var b = decks[to];
+
+  try { b.el.currentTime = 0; } catch(e){}
+  b.el.play().catch(noop);
+
+  applyFade(decks[from].gain.gain, false, CONFIG.FADE);
+  applyFade(b.gain.gain, true, CONFIG.FADE);
+
+  active = to;
+  idx = armed.index;
+  if (armed.order){ order = armed.order; block = armed.block; }
+  armed = null;
+  fading = true;
+  $("mixing").style.display = "";
+  $("title").classList.add("blend");
+
+  setTimeout(function(){
+    decks[from].el.pause();
+    decks[from].gain.gain.cancelScheduledValues(actx.currentTime);
+    decks[from].gain.gain.value = 0;
+    fading = false;
+    $("mixing").style.display = "none";
+    $("title").classList.remove("blend");
+  }, (CONFIG.FADE + 0.3) * 1000);
+
+  paintMeta();
+}
+
+/* Driver. Uses the file's real duration where the browser knows it,
+   so a wrong number in playlist.json can't cut a track short. */
+function tick(){
+  if (!started || !actx) return;
+  var a = decks[active].el;
+  if (a.paused || !isFinite(a.duration) || !a.duration) return;
+
+  var end = Math.max(a.duration - CONFIG.FADE, 1);
+  var remain = end - a.currentTime;
+
+  if (!armed && !fading && remain < 30) armNext();
+  if (!fading && remain <= 0.15) startCrossfade();
+
+  $("clock").textContent = fmt(a.currentTime);
+  $("dur").textContent   = fmt(a.duration);
+}
+setInterval(tick, 200);
+
+/* Fallback: if a track runs out before the fade fired, move on. */
+decks.forEach(function(d, i){
+  d.el.addEventListener("ended", function(){
+    if (i === active && !fading) startCrossfade();
+  });
+  d.el.addEventListener("error", function(){
+    if (i !== active) { armed = null; return; }   // bad preload, just re-arm
+    if (++misses > 8){ fail("Too many tracks failed to load. Check the library URLs."); return; }
+    startCrossfade();
+  });
+  d.el.addEventListener("loadedmetadata", function(){ if (i === active) misses = 0; });
 });
 
-/* Gross-drift guard: only fires if a tab slept or a block rolled over. */
+/* Gross-drift guard: sleeping tabs, block rollovers. */
 setInterval(function(){
-  if (!started || !synced || audio.paused) return;
+  if (!started || !synced || fading || decks[active].el.paused) return;
   var s = scheduleAt(Date.now());
-  if (s.block !== block || s.index !== idx || Math.abs(s.offset - audio.currentTime) > 25){
+  if (s.block !== block || s.index !== idx || Math.abs(s.offset - decks[active].el.currentTime) > 25){
     order = s.order; block = s.block;
     cue(s.index, s.offset);
   }
@@ -369,11 +501,10 @@ setInterval(function(){
 function paintMeta(){
   var t = order[idx];
   if (!t) return;
-  $("title").textContent  = t.title || prettify(t.file);
+  $("title").textContent  = label(t);
   $("artist").textContent = t.artist || "Unknown artist";
-  var n = peekNext();
-  $("next").textContent = n ? (n.title || prettify(n.file)) : "\u2014";
-  $("dur").textContent = fmt(audio.duration || t.dur);
+  var n = nextSlot();
+  $("next").textContent = n ? label(n.track) : "\u2014";
   needle();
 }
 
@@ -382,7 +513,7 @@ function renderTicks(){
   box.innerHTML = "";
   var n = order.length;
   if (!n) return;
-  var step = n > 90 ? Math.ceil(n / 90) : 1;   // keep the strip legible
+  var step = n > 90 ? Math.ceil(n / 90) : 1;
   for (var i = 0; i < n; i += step){
     var el = document.createElement("i");
     el.style.left = (i / n * 100) + "%";
@@ -394,8 +525,7 @@ function renderTicks(){
 function needle(){
   var frac;
   if (synced && total){
-    var elapsed = Math.max(0, (Date.now() - CONFIG.EPOCH) / 1000);
-    frac = (elapsed % total) / total;
+    frac = (Math.max(0, (Date.now() - CONFIG.EPOCH) / 1000) % total) / total;
   } else {
     frac = order.length ? idx / order.length : 0;
   }
@@ -422,10 +552,7 @@ var W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
 var FW = 220, FH = 138;
 var buf = [document.createElement("canvas"), document.createElement("canvas")];
 var bx = buf.map(function(c){ c.width = FW; c.height = FH; return c.getContext("2d"); });
-var cur = 0;
-
-var BANDS = 6;
-var level = new Float32Array(BANDS);
+var cur = 0, BANDS = 6, level = new Float32Array(BANDS);
 
 var grain = (function(){
   var g = document.createElement("canvas"); g.width = g.height = 96;
@@ -446,7 +573,7 @@ function resize(){
 }
 addEventListener("resize", resize);
 
-function mix(a, b, t){
+function mixc(a, b, t){
   return "rgba(" + Math.round(a[0]+(b[0]-a[0])*t) + "," +
                    Math.round(a[1]+(b[1]-a[1])*t) + "," +
                    Math.round(a[2]+(b[2]-a[2])*t) + ",";
@@ -457,8 +584,7 @@ function frame(t){
   requestAnimationFrame(frame);
   if (!W) resize();
 
-  /* read the spectrum into log-spaced bands */
-  if (analyser && !audio.paused){
+  if (analyser && !decks[active].el.paused){
     analyser.getByteFrequencyData(freq);
     var bins = freq.length;
     for (var b = 0; b < BANDS; b++){
@@ -473,11 +599,9 @@ function frame(t){
     for (var b2 = 0; b2 < BANDS; b2++) level[b2] += (0.05 - level[b2]) * 0.05;
   }
 
-  var src = bx[cur], dst = bx[1 - cur], dstC = buf[1 - cur], srcC = buf[cur];
+  var dst = bx[1 - cur], dstC = buf[1 - cur], srcC = buf[cur];
   var time = t / 1000;
 
-  /* feedback: the previous frame, nudged upward and outward — this is
-     what turns discrete blobs into drifting smoke */
   dst.setTransform(1, 0, 0, 1, 0, 0);
   dst.clearRect(0, 0, FW, FH);
   dst.globalAlpha = reduce ? 0.86 : 0.951;
@@ -488,7 +612,6 @@ function frame(t){
   dst.setTransform(1, 0, 0, 1, 0, 0);
   dst.globalAlpha = 1;
 
-  /* fresh energy, rising from the lower edge */
   dst.globalCompositeOperation = "lighter";
   for (var i = 0; i < BANDS; i++){
     var e = level[i];
@@ -497,7 +620,7 @@ function frame(t){
            + Math.sin(time * (0.29 + i * 0.11) + i * 2.1) * FW * 0.075;
     var py = FH * 0.9 - Math.cos(time * (0.19 + i * 0.07) + i) * FH * 0.05 - e * FH * 0.1;
     var rad = FH * (0.09 + e * 0.4);
-    var tint = mix(LAMP, GLOW, i / (BANDS - 1));
+    var tint = mixc(LAMP, GLOW, i / (BANDS - 1));
     var g = dst.createRadialGradient(px, py, 0, px, py, rad);
     g.addColorStop(0,   tint + (0.42 * e).toFixed(3) + ")");
     g.addColorStop(0.5, tint + (0.13 * e).toFixed(3) + ")");
@@ -510,7 +633,6 @@ function frame(t){
   dst.globalCompositeOperation = "source-over";
   cur = 1 - cur;
 
-  /* upscale — the low-res buffer is doing the blurring for free */
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = "#0A0910";
@@ -519,7 +641,6 @@ function frame(t){
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(dstC, 0, 0, W, H);
 
-  /* film grain + vignette */
   ctx.globalCompositeOperation = "overlay";
   ctx.globalAlpha = 0.045;
   for (var gx = 0; gx < W; gx += 96)
@@ -538,27 +659,37 @@ requestAnimationFrame(frame);
 /* ---------- controls ---------- */
 var PLAY  = "M0 0l12 7-12 7z";
 var PAUSE = "M0 0h4v14H0zM8 0h4v14H8z";
-
 function setIcon(){
-  $("icon").firstElementChild.setAttribute("d", audio.paused ? PLAY : PAUSE);
-  $("play").setAttribute("aria-label", audio.paused ? "Play" : "Pause");
+  var p = !started || decks[active].el.paused;
+  $("icon").firstElementChild.setAttribute("d", p ? PLAY : PAUSE);
+  $("play").setAttribute("aria-label", p ? "Play" : "Pause");
 }
-audio.addEventListener("play", setIcon);
-audio.addEventListener("pause", setIcon);
+decks.forEach(function(d){
+  d.el.addEventListener("play", setIcon);
+  d.el.addEventListener("pause", setIcon);
+});
 
 $("play").addEventListener("click", function(){
   if (!started) return tuneIn();
-  if (audio.paused){
-    if (actx && actx.state === "suspended") actx.resume();
-    /* rejoining after a pause should rejoin the broadcast, not resume
-       where you left it — that's the whole point of a station */
-    if (synced) advance(); else audio.play();
+  if (decks[active].el.paused){
+    if (actx.state === "suspended") actx.resume();
+    if (synced) rejoin(); else decks[active].el.play().catch(noop);
   } else {
-    audio.pause();
+    decks.forEach(function(d){ d.el.pause(); });
   }
+  setIcon();
 });
 
-$("vol").addEventListener("input", function(){ audio.volume = +this.value; });
+function rejoin(){
+  var s = scheduleAt(Date.now());
+  order = s.order; block = s.block;
+  cue(s.index, s.offset);
+}
+
+$("vol").addEventListener("input", function(){
+  vol = +this.value;
+  if (master) master.gain.value = vol;
+});
 
 addEventListener("keydown", function(e){
   if (e.code === "Space" && !/INPUT|BUTTON/.test(e.target.tagName)){
@@ -572,13 +703,11 @@ function tuneIn(){
   started = true;
   graph();
   if (actx.state === "suspended") actx.resume();
-  if (synced){
-    var s = scheduleAt(Date.now());
-    order = s.order; block = s.block;
-    cue(s.index, s.offset);
-  } else {
-    cue(0, 0);
-  }
+  unlock();
+
+  if (synced) rejoin();
+  else { order = shuffle(tracks, Math.floor(Date.now() / 864e5)); cue(0, 0); }
+
   var gate = $("gate");
   gate.classList.add("out");
   setTimeout(function(){ gate.hidden = true; }, 520);
@@ -592,7 +721,7 @@ load().then(function(list){
   if (!list.length){ fail("The library is empty. Push some MP3s and rerun the playlist workflow."); return; }
   tracks = list;
   synced = tracks.every(function(t){ return t.dur > 0; });
-  total  = tracks.reduce(function(a, t){ return a + t.dur; }, 0);
+  total  = tracks.reduce(function(a, t){ return a + slot(t); }, 0);
 
   if (synced){
     var s = scheduleAt(Date.now());
@@ -602,7 +731,9 @@ load().then(function(list){
     idx = 0;
   }
   renderTicks();
-  paintMeta();
+  $("title").textContent  = label(order[idx]);
+  $("artist").textContent = (order[idx] && order[idx].artist) || "Unknown artist";
+  needle();
   $("tune").disabled = false;
   $("gateNote").textContent = tracks.length + " tracks \u00b7 " +
     (total ? (total / 3600).toFixed(1) + " hours" : "durations unknown");
