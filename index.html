@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NIGHTDECK</title>
+<meta name="theme-color" content="#0A0910">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700&family=Newsreader:ital,wght@1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0A0910;
+    --deck:#14121C;
+    --haze:#2A2438;
+    --dust:#9A93A8;
+    --lamp:#FF6F91;
+    --glow:#7FD1C9;
+    --edge:rgba(154,147,168,.16);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--ink); color:#EDE9F2;
+    font-family:"Space Mono",ui-monospace,monospace;
+    display:flex; align-items:center; justify-content:center;
+    padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+  }
+  .deck{width:100%; max-width:640px}
+
+  /* ---- header ---- */
+  .top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px}
+  .mark{
+    font-family:"Big Shoulders Display",sans-serif; font-weight:700;
+    font-size:clamp(26px,7vw,38px); letter-spacing:.22em; line-height:1;
+    margin:0; text-transform:uppercase; color:#EDE9F2;
+  }
+  .mark b{color:var(--lamp); font-weight:700}
+  .status{font-size:10px; letter-spacing:.18em; color:var(--dust); text-transform:uppercase; white-space:nowrap}
+  .status .dot{
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--haze); margin-right:6px; vertical-align:middle;
+  }
+  .status.live .dot{background:var(--lamp); box-shadow:0 0 8px var(--lamp); animation:pulse 3.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ---- window ---- */
+  .window{
+    position:relative; aspect-ratio:16/10; border-radius:3px; overflow:hidden;
+    background:var(--deck); border:1px solid var(--edge);
+    box-shadow:inset 0 0 60px rgba(0,0,0,.75);
+  }
+  .window canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+
+  .gate{
+    position:absolute; inset:0; display:grid; place-items:center;
+    background:rgba(10,9,16,.82); backdrop-filter:blur(2px);
+    transition:opacity .5s ease; z-index:3;
+  }
+  .gate[hidden]{display:none}
+  .gate.out{opacity:0; pointer-events:none}
+  .tune{
+    font-family:"Big Shoulders Display",sans-serif; font-weight:500;
+    font-size:20px; letter-spacing:.28em; text-transform:uppercase;
+    background:none; border:1px solid var(--lamp); color:var(--lamp);
+    padding:12px 26px; border-radius:2px; cursor:pointer;
+    transition:background .25s ease, color .25s ease;
+  }
+  .tune:hover,.tune:focus-visible{background:var(--lamp); color:var(--ink)}
+  .tune[disabled]{border-color:var(--haze); color:var(--dust); cursor:default}
+  .gate small{
+    display:block; margin-top:14px; text-align:center; font-size:10px;
+    letter-spacing:.14em; color:var(--dust); text-transform:uppercase; max-width:34ch;
+  }
+
+  /* ---- tuning strip: one tick per track in the current shuffle block ---- */
+  .strip{
+    position:relative; height:22px; margin-top:8px;
+    border-left:1px solid var(--edge); border-right:1px solid var(--edge);
+  }
+  .ticks{position:absolute; inset:0; opacity:.5}
+  .ticks i{position:absolute; top:11px; bottom:0; width:1px; background:var(--haze)}
+  .ticks i.q{top:5px; background:var(--dust); opacity:.6}
+  .needle{
+    position:absolute; top:0; bottom:0; width:1px; background:var(--lamp);
+    box-shadow:0 0 7px var(--lamp); transform:translateX(-.5px);
+    transition:left .9s linear;
+  }
+  .needle::before{
+    content:""; position:absolute; top:0; left:-2px; width:5px; height:5px;
+    background:var(--lamp); border-radius:50%;
+  }
+
+  /* ---- now playing ---- */
+  .now{margin-top:18px; min-height:74px}
+  .title{
+    font-family:"Newsreader",Georgia,serif; font-style:italic; font-weight:400;
+    font-size:clamp(21px,5.2vw,30px); line-height:1.2; margin:0 0 6px;
+    overflow-wrap:anywhere;
+  }
+  .line{font-size:11px; letter-spacing:.13em; color:var(--dust); text-transform:uppercase}
+  .line span{color:var(--haze); margin:0 8px}
+
+  /* ---- controls ---- */
+  .bar{display:flex; align-items:center; gap:16px; margin-top:20px; padding-top:16px; border-top:1px solid var(--edge)}
+  .play{
+    flex:none; width:46px; height:46px; border-radius:50%;
+    border:1px solid var(--edge); background:var(--deck); color:#EDE9F2;
+    cursor:pointer; display:grid; place-items:center; transition:border-color .2s}
+  .play:hover,.play:focus-visible{border-color:var(--lamp)}
+  .play svg{width:15px; height:15px; fill:currentColor}
+  .vol{flex:1; display:flex; align-items:center; gap:10px; max-width:190px}
+  .vol label{font-size:10px; letter-spacing:.16em; color:var(--dust)}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:1px;
+    background:var(--haze); outline:none; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
+    background:var(--glow); cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:11px; height:11px; border:0; border-radius:50%; background:var(--glow); cursor:pointer;
+  }
+  .up{margin-left:auto; text-align:right; font-size:10px; letter-spacing:.13em; color:var(--dust); text-transform:uppercase; min-width:0}
+  .up b{display:block; font-weight:400; color:var(--haze); font-size:9px; margin-bottom:3px}
+  .up u{display:block; text-decoration:none; color:var(--dust); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:22ch}
+
+  :focus-visible{outline:1px solid var(--glow); outline-offset:3px}
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms !important; transition-duration:.01ms !important}
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="top">
+    <h1 class="mark">Night<b>deck</b></h1>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Warming up</span></div>
+  </div>
+
+  <div class="window">
+    <canvas id="cv"></canvas>
+    <div class="gate" id="gate">
+      <div>
+        <button class="tune" id="tune" disabled>Tune in</button>
+        <small id="gateNote">Reading the library</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="ticks" id="ticks"></div>
+    <div class="needle" id="needle" style="left:0"></div>
+  </div>
+
+  <div class="now">
+    <h2 class="title" id="title">&mdash;</h2>
+    <div class="line">
+      <span id="artist">&nbsp;</span>
+    </div>
+    <div class="line" style="margin-top:4px">
+      <em id="clock" style="font-style:normal">0:00</em><span>/</span><em id="dur" style="font-style:normal">0:00</em>
+    </div>
+  </div>
+
+  <div class="bar">
+    <button class="play" id="play" aria-label="Play">
+      <svg id="icon" viewBox="0 0 12 14"><path d="M0 0l12 7-12 7z"/></svg>
+    </button>
+    <div class="vol">
+      <label for="vol">VOL</label>
+      <input type="range" id="vol" min="0" max="1" step="0.01" value="0.75" aria-label="Volume">
+    </div>
+    <div class="up">
+      <b>Up next</b>
+      <u id="next">&mdash;</u>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ * CONFIG
+ * BASE  — must be same-origin with this page for the visualiser to
+ *         read audio data. Both live under https://szk5334.github.io,
+ *         so this works. If you ever put the site on a custom domain,
+ *         the origins diverge and the analyser returns silence.
+ * EPOCH — station sign-on. Every listener derives the same schedule
+ *         from this instant, so don't change it once you're live.
+ * ------------------------------------------------------------------ */
+var CONFIG = {
+  BASE:  "https://szk5334.github.io/lofi-library/",
+  EPOCH: Date.UTC(2026, 0, 1, 0, 0, 0)
+};
+
+var $ = function(id){ return document.getElementById(id); };
+var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- state ---------- */
+var tracks = [], order = [], idx = 0, block = 0, total = 0;
+var synced = false, started = false, pendingOffset = 0, misses = 0, preloader = null;
+
+/* ---------- deterministic shuffle ---------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function shuffle(arr, seed){
+  var a = arr.slice(), rnd = mulberry32((seed * 2654435761) >>> 0);
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(rnd() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+/* Where the station is at a given wall-clock instant. */
+function scheduleAt(when){
+  var elapsed = Math.max(0, (when - CONFIG.EPOCH) / 1000);
+  var b   = Math.floor(elapsed / total);
+  var off = elapsed - b * total;
+  var ord = shuffle(tracks, b);
+  for (var i = 0; i < ord.length; i++){
+    if (off < ord[i].dur) return { order: ord, index: i, offset: off, block: b };
+    off -= ord[i].dur;
+  }
+  return { order: ord, index: 0, offset: 0, block: b };
+}
+
+/* ---------- playlist ---------- */
+function url(t){
+  return CONFIG.BASE + t.file.split("/").map(encodeURIComponent).join("/");
+}
+function prettify(file){
+  var n = file.split("/").pop().replace(/\.mp3$/i, "");
+  return n.replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function fmt(s){
+  if (!isFinite(s) || s < 0) s = 0;
+  var m = Math.floor(s / 60);
+  var r = Math.floor(s % 60);
+  return m + ":" + (r < 10 ? "0" : "") + r;
+}
+
+function load(){
+  return fetch(CONFIG.BASE + "playlist.json", { cache: "no-cache" })
+    .then(function(r){
+      if (!r.ok) throw new Error("playlist " + r.status);
+      return r.json();
+    })
+    .then(function(raw){
+      var list = Array.isArray(raw) ? raw : (raw && raw.tracks) || [];
+      return list.map(function(t){
+        if (typeof t === "string") return { file: t, dur: 0, title: null, artist: null };
+        return {
+          file:   t.file,
+          dur:    typeof t.dur === "number" ? t.dur : 0,
+          title:  t.title  || null,
+          artist: t.artist || null
+        };
+      }).filter(function(t){ return t.file; });
+    });
+}
+
+/* ---------- audio ---------- */
+var audio = new Audio();
+audio.preload = "auto";
+audio.volume = 0.75;
+
+var actx = null, analyser = null, freq = null;
+
+function graph(){
+  if (actx) return;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  actx = new AC();
+  var src = actx.createMediaElementSource(audio);
+  analyser = actx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.84;
+  src.connect(analyser);
+  analyser.connect(actx.destination);
+  freq = new Uint8Array(analyser.frequencyBinCount);
+}
+
+function cue(i, offset){
+  idx = i;
+  var t = order[idx];
+  pendingOffset = offset || 0;
+  preloader = null;
+  audio.src = url(t);
+  audio.load();
+  var p = audio.play();
+  if (p && p.catch) p.catch(function(){});
+  paintMeta();
+}
+
+audio.addEventListener("loadedmetadata", function(){
+  misses = 0;
+  if (pendingOffset > 1 && pendingOffset < (audio.duration || Infinity) - 2){
+    try { audio.currentTime = pendingOffset; } catch(e){}
+  }
+  pendingOffset = 0;
+  paintMeta();
+});
+
+audio.addEventListener("error", function(){
+  // A dead file shouldn't take the station down. Step past it.
+  if (++misses > 8){ fail("Too many tracks failed to load. Check the library URLs."); return; }
+  advance();
+});
+
+audio.addEventListener("ended", advance);
+
+/* Recomputing from the clock on every boundary is self-correcting —
+   no drift accumulates, and nothing stutters mid-track. */
+function advance(){
+  if (synced){
+    var s = scheduleAt(Date.now());
+    order = s.order; block = s.block;
+    cue(s.index, s.offset);
+  } else {
+    cue((idx + 1) % order.length, 0);
+  }
+}
+
+function peekNext(){
+  if (!synced) return order[(idx + 1) % order.length];
+  var remain = Math.max(0, (audio.duration || order[idx].dur) - audio.currentTime);
+  var s = scheduleAt(Date.now() + (remain + 1) * 1000);
+  return s.order[s.index];
+}
+
+audio.addEventListener("timeupdate", function(){
+  var d = audio.duration || order[idx].dur || 0;
+  $("clock").textContent = fmt(audio.currentTime);
+  $("dur").textContent = fmt(d);
+  if (!preloader && d && d - audio.currentTime < 25){
+    var n = peekNext();
+    if (n){
+      preloader = new Audio();
+      preloader.preload = "auto";
+      preloader.src = url(n);
+    }
+  }
+});
+
+/* Gross-drift guard: only fires if a tab slept or a block rolled over. */
+setInterval(function(){
+  if (!started || !synced || audio.paused) return;
+  var s = scheduleAt(Date.now());
+  if (s.block !== block || s.index !== idx || Math.abs(s.offset - audio.currentTime) > 25){
+    order = s.order; block = s.block;
+    cue(s.index, s.offset);
+  }
+}, 20000);
+
+/* ---------- painting ---------- */
+function paintMeta(){
+  var t = order[idx];
+  if (!t) return;
+  $("title").textContent  = t.title || prettify(t.file);
+  $("artist").textContent = t.artist || "Unknown artist";
+  var n = peekNext();
+  $("next").textContent = n ? (n.title || prettify(n.file)) : "\u2014";
+  $("dur").textContent = fmt(audio.duration || t.dur);
+  needle();
+}
+
+function renderTicks(){
+  var box = $("ticks");
+  box.innerHTML = "";
+  var n = order.length;
+  if (!n) return;
+  var step = n > 90 ? Math.ceil(n / 90) : 1;   // keep the strip legible
+  for (var i = 0; i < n; i += step){
+    var el = document.createElement("i");
+    el.style.left = (i / n * 100) + "%";
+    if (i % (step * 10) === 0) el.className = "q";
+    box.appendChild(el);
+  }
+}
+
+function needle(){
+  var frac;
+  if (synced && total){
+    var elapsed = Math.max(0, (Date.now() - CONFIG.EPOCH) / 1000);
+    frac = (elapsed % total) / total;
+  } else {
+    frac = order.length ? idx / order.length : 0;
+  }
+  $("needle").style.left = (frac * 100) + "%";
+}
+setInterval(needle, 1000);
+
+function status(text, live){
+  $("statusText").textContent = text;
+  $("status").classList.toggle("live", !!live);
+}
+function fail(msg){
+  status("Off air", false);
+  $("gate").classList.remove("out");
+  $("gate").hidden = false;
+  $("tune").disabled = true;
+  $("tune").textContent = "Off air";
+  $("gateNote").textContent = msg;
+}
+
+/* ---------- the smoke ---------- */
+var cv = $("cv"), ctx = cv.getContext("2d");
+var W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
+var FW = 220, FH = 138;
+var buf = [document.createElement("canvas"), document.createElement("canvas")];
+var bx = buf.map(function(c){ c.width = FW; c.height = FH; return c.getContext("2d"); });
+var cur = 0;
+
+var BANDS = 6;
+var level = new Float32Array(BANDS);
+
+var grain = (function(){
+  var g = document.createElement("canvas"); g.width = g.height = 96;
+  var gc = g.getContext("2d"), im = gc.createImageData(96, 96), d = im.data;
+  for (var i = 0; i < d.length; i += 4){
+    var v = 118 + Math.random() * 68;
+    d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255;
+  }
+  gc.putImageData(im, 0, 0);
+  return g;
+})();
+
+function resize(){
+  var r = cv.getBoundingClientRect();
+  W = Math.max(1, Math.round(r.width * DPR));
+  H = Math.max(1, Math.round(r.height * DPR));
+  cv.width = W; cv.height = H;
+}
+addEventListener("resize", resize);
+
+function mix(a, b, t){
+  return "rgba(" + Math.round(a[0]+(b[0]-a[0])*t) + "," +
+                   Math.round(a[1]+(b[1]-a[1])*t) + "," +
+                   Math.round(a[2]+(b[2]-a[2])*t) + ",";
+}
+var LAMP = [255,111,145], GLOW = [127,209,201];
+
+function frame(t){
+  requestAnimationFrame(frame);
+  if (!W) resize();
+
+  /* read the spectrum into log-spaced bands */
+  if (analyser && !audio.paused){
+    analyser.getByteFrequencyData(freq);
+    var bins = freq.length;
+    for (var b = 0; b < BANDS; b++){
+      var lo = Math.floor(Math.pow(bins, b / BANDS));
+      var hi = Math.floor(Math.pow(bins, (b + 1) / BANDS));
+      var sum = 0, n = 0;
+      for (var k = lo; k < hi && k < bins; k++){ sum += freq[k]; n++; }
+      var v = n ? (sum / n) / 255 : 0;
+      level[b] += (v - level[b]) * 0.18;
+    }
+  } else {
+    for (var b2 = 0; b2 < BANDS; b2++) level[b2] += (0.05 - level[b2]) * 0.05;
+  }
+
+  var src = bx[cur], dst = bx[1 - cur], dstC = buf[1 - cur], srcC = buf[cur];
+  var time = t / 1000;
+
+  /* feedback: the previous frame, nudged upward and outward — this is
+     what turns discrete blobs into drifting smoke */
+  dst.setTransform(1, 0, 0, 1, 0, 0);
+  dst.clearRect(0, 0, FW, FH);
+  dst.globalAlpha = reduce ? 0.86 : 0.951;
+  var s = reduce ? 1.004 : 1.016;
+  var sway = reduce ? 0 : Math.sin(time * 0.21) * 1.1;
+  dst.setTransform(s, 0, 0, s, (FW * (1 - s)) / 2 + sway, (FH * (1 - s)) / 2 - (reduce ? 0.2 : 1.15));
+  dst.drawImage(srcC, 0, 0);
+  dst.setTransform(1, 0, 0, 1, 0, 0);
+  dst.globalAlpha = 1;
+
+  /* fresh energy, rising from the lower edge */
+  dst.globalCompositeOperation = "lighter";
+  for (var i = 0; i < BANDS; i++){
+    var e = level[i];
+    if (e < 0.02) continue;
+    var px = FW * (0.12 + 0.76 * (i / (BANDS - 1)))
+           + Math.sin(time * (0.29 + i * 0.11) + i * 2.1) * FW * 0.075;
+    var py = FH * 0.9 - Math.cos(time * (0.19 + i * 0.07) + i) * FH * 0.05 - e * FH * 0.1;
+    var rad = FH * (0.09 + e * 0.4);
+    var tint = mix(LAMP, GLOW, i / (BANDS - 1));
+    var g = dst.createRadialGradient(px, py, 0, px, py, rad);
+    g.addColorStop(0,   tint + (0.42 * e).toFixed(3) + ")");
+    g.addColorStop(0.5, tint + (0.13 * e).toFixed(3) + ")");
+    g.addColorStop(1,   tint + "0)");
+    dst.fillStyle = g;
+    dst.beginPath();
+    dst.arc(px, py, rad, 0, 6.2832);
+    dst.fill();
+  }
+  dst.globalCompositeOperation = "source-over";
+  cur = 1 - cur;
+
+  /* upscale — the low-res buffer is doing the blurring for free */
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#0A0910";
+  ctx.fillRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(dstC, 0, 0, W, H);
+
+  /* film grain + vignette */
+  ctx.globalCompositeOperation = "overlay";
+  ctx.globalAlpha = 0.045;
+  for (var gx = 0; gx < W; gx += 96)
+    for (var gy = 0; gy < H; gy += 96)
+      ctx.drawImage(grain, gx, gy);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  var vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.24, W/2, H/2, Math.max(W,H)*0.72);
+  vg.addColorStop(0, "rgba(10,9,16,0)");
+  vg.addColorStop(1, "rgba(10,9,16,0.82)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+}
+requestAnimationFrame(frame);
+
+/* ---------- controls ---------- */
+var PLAY  = "M0 0l12 7-12 7z";
+var PAUSE = "M0 0h4v14H0zM8 0h4v14H8z";
+
+function setIcon(){
+  $("icon").firstElementChild.setAttribute("d", audio.paused ? PLAY : PAUSE);
+  $("play").setAttribute("aria-label", audio.paused ? "Play" : "Pause");
+}
+audio.addEventListener("play", setIcon);
+audio.addEventListener("pause", setIcon);
+
+$("play").addEventListener("click", function(){
+  if (!started) return tuneIn();
+  if (audio.paused){
+    if (actx && actx.state === "suspended") actx.resume();
+    /* rejoining after a pause should rejoin the broadcast, not resume
+       where you left it — that's the whole point of a station */
+    if (synced) advance(); else audio.play();
+  } else {
+    audio.pause();
+  }
+});
+
+$("vol").addEventListener("input", function(){ audio.volume = +this.value; });
+
+addEventListener("keydown", function(e){
+  if (e.code === "Space" && !/INPUT|BUTTON/.test(e.target.tagName)){
+    e.preventDefault();
+    $("play").click();
+  }
+});
+
+function tuneIn(){
+  if (started) return;
+  started = true;
+  graph();
+  if (actx.state === "suspended") actx.resume();
+  if (synced){
+    var s = scheduleAt(Date.now());
+    order = s.order; block = s.block;
+    cue(s.index, s.offset);
+  } else {
+    cue(0, 0);
+  }
+  var gate = $("gate");
+  gate.classList.add("out");
+  setTimeout(function(){ gate.hidden = true; }, 520);
+  status(synced ? "On air \u00b7 synced" : "On air \u00b7 shuffle", true);
+}
+$("tune").addEventListener("click", tuneIn);
+
+/* ---------- boot ---------- */
+resize();
+load().then(function(list){
+  if (!list.length){ fail("The library is empty. Push some MP3s and rerun the playlist workflow."); return; }
+  tracks = list;
+  synced = tracks.every(function(t){ return t.dur > 0; });
+  total  = tracks.reduce(function(a, t){ return a + t.dur; }, 0);
+
+  if (synced){
+    var s = scheduleAt(Date.now());
+    order = s.order; block = s.block; idx = s.index;
+  } else {
+    order = shuffle(tracks, Math.floor(Date.now() / 864e5));
+    idx = 0;
+  }
+  renderTicks();
+  paintMeta();
+  $("tune").disabled = false;
+  $("gateNote").textContent = tracks.length + " tracks \u00b7 " +
+    (total ? (total / 3600).toFixed(1) + " hours" : "durations unknown");
+  status("Standing by");
+}).catch(function(e){
+  console.error(e);
+  fail("Can\u2019t reach the library. Check that Pages is enabled on lofi-library.");
+});
+
+})();
+</script>
+</body>
+</html>
