@@ -3,747 +3,663 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161c">
 <title>NIGHTDECK</title>
-<meta name="theme-color" content="#0A0910">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700&family=Newsreader:ital,wght@1,300;1,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap" rel="stylesheet">
+
 <style>
-  :root{
-    --ink:#0A0910;
-    --deck:#14121C;
-    --haze:#2A2438;
-    --dust:#9A93A8;
-    --lamp:#FF6F91;
-    --glow:#7FD1C9;
-    --edge:rgba(154,147,168,.16);
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; background:var(--ink); color:#EDE9F2;
-    font-family:"Space Mono",ui-monospace,monospace;
-    display:flex; align-items:center; justify-content:center;
-    padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));
-    -webkit-font-smoothing:antialiased;
-  }
-  .deck{width:100%; max-width:640px}
+/* ═══════════════════════════════════════════════════════════════════
+   NIGHTDECK
 
-  .top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px}
-  .mark{
-    font-family:"Big Shoulders Display",sans-serif; font-weight:700;
-    font-size:clamp(26px,7vw,38px); letter-spacing:.22em; line-height:1;
-    margin:0; text-transform:uppercase; color:#EDE9F2;
-  }
-  .mark b{color:var(--lamp); font-weight:700}
-  .status{font-size:10px; letter-spacing:.18em; color:var(--dust); text-transform:uppercase; white-space:nowrap}
-  .status .dot{
-    display:inline-block; width:6px; height:6px; border-radius:50%;
-    background:var(--haze); margin-right:6px; vertical-align:middle;
-  }
-  .status.live .dot{background:var(--lamp); box-shadow:0 0 8px var(--lamp); animation:pulse 3.4s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+     0   #viz        Butterchurn, full bleed
+     20  #drawer     slides up from under the transport
+     30  #transport  always on top
+   ═══════════════════════════════════════════════════════════════════ */
 
-  .window{
-    position:relative; aspect-ratio:16/10; border-radius:3px; overflow:hidden;
-    background:var(--deck); border:1px solid var(--edge);
-    box-shadow:inset 0 0 60px rgba(0,0,0,.75);
-  }
-  .window canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+:root {
+  --ink:#14161c; --panel:#1b1e26; --line:#2a2e39;
+  --paper:#e6e3dc; --muted:#8a8f9c; --amber:#e8a33d; --glass:#6fb3b8;
+  --display:"Archivo",system-ui,sans-serif;
+  --body:"Newsreader",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --bar:3.5rem;
+  --top:calc(var(--bar) + env(safe-area-inset-top, 0px));
+  --drawer-veil:0.93;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
+  font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
 
-  .gate{
-    position:absolute; inset:0; display:grid; place-items:center;
-    background:rgba(10,9,16,.82); backdrop-filter:blur(2px);
-    transition:opacity .5s ease; z-index:3;
-  }
-  .gate[hidden]{display:none}
-  .gate.out{opacity:0; pointer-events:none}
-  .tune{
-    font-family:"Big Shoulders Display",sans-serif; font-weight:500;
-    font-size:20px; letter-spacing:.28em; text-transform:uppercase;
-    background:none; border:1px solid var(--lamp); color:var(--lamp);
-    padding:12px 26px; border-radius:2px; cursor:pointer;
-    transition:background .25s ease, color .25s ease;
-  }
-  .tune:hover,.tune:focus-visible{background:var(--lamp); color:var(--ink)}
-  .tune[disabled]{border-color:var(--haze); color:var(--dust); cursor:default}
-  .gate small{
-    display:block; margin-top:14px; text-align:center; font-size:10px;
-    letter-spacing:.14em; color:var(--dust); text-transform:uppercase; max-width:34ch;
-  }
+/* ─── visualizer ─────────────────────────────────────────────────── */
+#viz{position:fixed;inset:0;width:100%;height:100dvh;z-index:0;display:block}
+#viz-shade{position:fixed;inset:0 0 auto 0;height:calc(var(--top)*2.2);z-index:1;
+  pointer-events:none;background:linear-gradient(to bottom,
+    rgba(20,22,28,.88) 0%,rgba(20,22,28,.55) 45%,rgba(20,22,28,0) 100%)}
 
-  .strip{
-    position:relative; height:22px; margin-top:8px;
-    border-left:1px solid var(--edge); border-right:1px solid var(--edge);
-  }
-  .ticks{position:absolute; inset:0; opacity:.5}
-  .ticks i{position:absolute; top:11px; bottom:0; width:1px; background:var(--haze)}
-  .ticks i.q{top:5px; background:var(--dust); opacity:.6}
-  .needle{
-    position:absolute; top:0; bottom:0; width:1px; background:var(--lamp);
-    box-shadow:0 0 7px var(--lamp); transform:translateX(-.5px);
-    transition:left .9s linear;
-  }
-  .needle::before{
-    content:""; position:absolute; top:0; left:-2px; width:5px; height:5px;
-    background:var(--lamp); border-radius:50%;
-  }
+/* ─── transport ──────────────────────────────────────────────────── */
+#transport{position:fixed;top:0;left:0;right:0;z-index:30;height:var(--top);
+  padding:0 .875rem;padding-top:env(safe-area-inset-top,0px);
+  display:flex;align-items:center;gap:.875rem;
+  border-bottom:1px solid rgba(230,227,220,.09);background:rgba(20,22,28,.55);
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
 
-  .now{margin-top:18px; min-height:74px}
-  .title{
-    font-family:"Newsreader",Georgia,serif; font-style:italic; font-weight:400;
-    font-size:clamp(21px,5.2vw,30px); line-height:1.2; margin:0 0 6px;
-    overflow-wrap:anywhere; transition:opacity .45s ease;
-  }
-  .title.blend{opacity:.55}
-  .line{font-size:11px; letter-spacing:.13em; color:var(--dust); text-transform:uppercase}
-  .line span{color:var(--haze); margin:0 8px}
-  .line em.mixing{font-style:normal; color:var(--glow)}
+.tp-btn{flex:0 0 auto;width:2.25rem;height:2.25rem;display:grid;place-items:center;
+  background:none;border:1px solid var(--line);border-radius:50%;color:var(--paper);
+  cursor:pointer;transition:border-color 140ms ease,color 140ms ease}
+.tp-btn:hover{border-color:var(--amber);color:var(--amber)}
+.tp-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.tp-btn:disabled{opacity:.4;cursor:default}
+.tp-btn svg{width:14px;height:14px;fill:currentColor}
+.tp-btn .icon-pause{display:none}
+.tp-btn[aria-pressed="true"] .icon-play{display:none}
+.tp-btn[aria-pressed="true"] .icon-pause{display:block}
 
-  .bar{display:flex; align-items:center; gap:16px; margin-top:20px; padding-top:16px; border-top:1px solid var(--edge)}
-  .play{
-    flex:none; width:46px; height:46px; border-radius:50%;
-    border:1px solid var(--edge); background:var(--deck); color:#EDE9F2;
-    cursor:pointer; display:grid; place-items:center; transition:border-color .2s}
-  .play:hover,.play:focus-visible{border-color:var(--lamp)}
-  .play svg{width:15px; height:15px; fill:currentColor}
-  .vol{flex:1; display:flex; align-items:center; gap:10px; max-width:190px}
-  .vol label{font-size:10px; letter-spacing:.16em; color:var(--dust)}
-  input[type=range]{
-    -webkit-appearance:none; appearance:none; width:100%; height:1px;
-    background:var(--haze); outline:none; cursor:pointer;
-  }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
-    background:var(--glow); cursor:pointer;
-  }
-  input[type=range]::-moz-range-thumb{
-    width:11px; height:11px; border:0; border-radius:50%; background:var(--glow); cursor:pointer;
-  }
-  .up{margin-left:auto; text-align:right; font-size:10px; letter-spacing:.13em; color:var(--dust); text-transform:uppercase; min-width:0}
-  .up b{display:block; font-weight:400; color:var(--haze); font-size:9px; margin-bottom:3px}
-  .up u{display:block; text-decoration:none; color:var(--dust); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:22ch}
+.tp-now{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:.5rem}
+.tp-lamp{flex:0 0 auto;width:6px;height:6px;border-radius:50%;background:var(--line);
+  align-self:center;transition:background-color 300ms ease,box-shadow 300ms ease}
+body.is-playing .tp-lamp{background:var(--amber);box-shadow:0 0 0 3px rgba(232,163,61,.18);
+  animation:pulse 3.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 5px rgba(232,163,61,.06)}}
 
-  :focus-visible{outline:1px solid var(--glow); outline-offset:3px}
-  @media (prefers-reduced-motion:reduce){
-    *{animation-duration:.01ms !important; transition-duration:.01ms !important}
-  }
+.tp-track{font-family:var(--display);font-variation-settings:"wdth" 104,"wght" 550;
+  font-size:.875rem;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-artist{font-family:var(--mono);font-size:.625rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+@media (max-width:26rem){.tp-artist{display:none}}
+
+.tp-posts{flex:0 0 auto;background:none;border:0;border-left:1px solid var(--line);
+  padding:.5rem 0 .5rem .875rem;color:var(--muted);font-family:var(--mono);font-size:.625rem;
+  letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:color 140ms ease}
+.tp-posts:hover,body.drawer-open .tp-posts{color:var(--amber)}
+.tp-posts:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+/* ─── drawer ─────────────────────────────────────────────────────── */
+#drawer{position:fixed;top:var(--top);left:0;right:0;bottom:0;z-index:20;
+  display:flex;flex-direction:column;background:rgba(20,22,28,var(--drawer-veil));
+  -webkit-backdrop-filter:blur(26px) saturate(1.15);backdrop-filter:blur(26px) saturate(1.15);
+  border-top:1px solid rgba(230,227,220,.06);transform:translateY(100%);
+  transition:transform 420ms cubic-bezier(.16,1,.3,1);will-change:transform}
+body.drawer-open #drawer{transform:translateY(0)}
+#drawer[inert]{pointer-events:none}
+.dw-scroll{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,0px)}
+.dw-close{position:absolute;top:.5rem;right:.75rem;z-index:2;width:2rem;height:2rem;
+  display:grid;place-items:center;background:rgba(20,22,28,.6);border:0;border-radius:50%;
+  color:var(--muted);font-size:1rem;line-height:1;cursor:pointer}
+.dw-close:hover{color:var(--amber)}
+.dw-close:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+@media (prefers-reduced-motion:reduce){
+  #drawer{transition-duration:.01ms}
+  body.is-playing .tp-lamp{animation:none}
+}
+
+/* ─── timeline ───────────────────────────────────────────────────── */
+.nd-timeline{list-style:none;max-width:34rem;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+.nd-timeline__year{font-family:var(--mono);font-size:.625rem;letter-spacing:.22em;
+  color:var(--muted);padding:2.25rem 0 .75rem 2.75rem}
+.nd-timeline__year:first-child{padding-top:0}
+.nd-entry{position:relative;display:grid;grid-template-columns:2.75rem 1fr;
+  grid-template-areas:"rail date" "rail title" "rail blurb";gap:.2rem 0;
+  padding:1rem 0 1.5rem;text-decoration:none;color:inherit;width:100%;
+  background:none;border:0;text-align:left;cursor:pointer;font:inherit}
+.nd-entry:focus-visible{outline:2px solid var(--amber);outline-offset:4px}
+.nd-entry__rail{grid-area:rail;position:relative}
+.nd-entry__rail::before{content:"";position:absolute;left:3px;top:0;bottom:-1.5rem;
+  width:1px;background:var(--line)}
+.nd-entry__rail::after{content:"";position:absolute;left:0;top:.45rem;width:7px;height:7px;
+  border:1.5px solid var(--muted);border-radius:50%;background:var(--ink);
+  transition:background-color 140ms ease,border-color 140ms ease}
+.nd-timeline__item:last-child .nd-entry__rail::before{bottom:auto;height:1.4rem}
+.nd-entry:hover .nd-entry__rail::after{background:var(--amber);border-color:var(--amber)}
+.nd-entry__date{grid-area:date;font-family:var(--mono);font-size:.625rem;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.nd-entry__title{grid-area:title;font-family:var(--display);
+  font-variation-settings:"wdth" 108,"wght" 600;font-size:1.3125rem;line-height:1.15;
+  letter-spacing:-.01em;margin-top:.15rem;transition:color 140ms ease}
+.nd-entry:hover .nd-entry__title{color:var(--amber)}
+.nd-entry__blurb{grid-area:blurb;font-size:.9375rem;line-height:1.5;
+  color:color-mix(in srgb,var(--paper) 72%,transparent);margin-top:.35rem;text-wrap:pretty}
+
+/* ─── note view ──────────────────────────────────────────────────── */
+.nd{max-width:34rem;margin:0 auto;padding:1rem 1.5rem 5rem;font-size:1.0625rem;line-height:1.65}
+.nd-head{margin-bottom:2.5rem}
+.nd-head__title{font-family:var(--display);font-variation-settings:"wdth" 112,"wght" 620;
+  font-size:clamp(1.875rem,7vw,2.75rem);line-height:1.03;letter-spacing:-.015em;
+  margin:0 0 .75rem;text-wrap:balance}
+.nd-head__stamp{font-family:var(--mono);font-size:.6875rem;letter-spacing:.08em;
+  color:var(--muted);margin:0;padding-top:1rem;border-top:1px solid var(--line)}
+.nd-body>*{margin-block:0 1.25rem}
+.nd-body h2{font-family:var(--mono);font-size:.6875rem;font-weight:500;text-transform:uppercase;
+  letter-spacing:.18em;color:var(--muted);margin-block:2.5rem 1rem}
+.nd-body h3{font-family:var(--display);font-variation-settings:"wdth" 100,"wght" 600;
+  font-size:1.1875rem;margin-block:1.75rem .5rem}
+.nd-body a{color:var(--paper);text-decoration-color:var(--amber);text-underline-offset:.2em}
+.nd-body a:hover{color:var(--amber)}
+.nd-body code{font-family:var(--mono);font-size:.8125em;background:var(--panel);
+  padding:.1em .35em;border-radius:2px}
+.nd-body pre{font-family:var(--mono);font-size:.8125rem;line-height:1.6;background:var(--panel);
+  border-left:2px solid var(--line);padding:1rem 1.125rem;overflow-x:auto}
+.nd-body pre code{background:none;padding:0}
+.nd-body ul,.nd-body ol{padding-left:1.25rem}
+.nd-body li{margin-bottom:.375rem}
+.nd-body li::marker{color:var(--muted)}
+.nd-body img{max-width:100%;height:auto;border-radius:2px}
+
+/* callouts — written as > [!NOTE] / > [!TIP] so GitHub renders them too */
+.nd-body blockquote.nd-note,.nd-body blockquote.nd-digest{
+  position:relative;margin:2rem 0;padding:0 0 0 1.25rem;border:0}
+.nd-body blockquote.nd-note::before,.nd-body blockquote.nd-digest::before{
+  content:"";position:absolute;left:0;top:.4em;bottom:.2em;width:2px;border-radius:1px}
+.nd-body blockquote.nd-note::after,.nd-body blockquote.nd-digest::after{
+  font-family:var(--mono);font-size:.5625rem;text-transform:uppercase;letter-spacing:.2em;
+  position:absolute;left:1.25rem;top:-1.35em}
+.nd-body blockquote.nd-note::before{background:var(--amber)}
+.nd-body blockquote.nd-note::after{content:"notes";color:var(--amber)}
+.nd-body blockquote.nd-digest::before{background:var(--glass)}
+.nd-body blockquote.nd-digest::after{content:"digest";color:var(--glass)}
+.nd-body blockquote.nd-digest{font-size:.9875rem;line-height:1.6;
+  color:color-mix(in srgb,var(--paper) 88%,transparent)}
+.nd-body blockquote>*:last-child{margin-bottom:0}
+
+.nd-discuss{display:inline-flex;align-items:center;gap:.5rem;margin-top:2.5rem;
+  padding:.7rem 1rem;border:1px solid var(--line);border-radius:2px;
+  color:var(--muted);font-family:var(--mono);font-size:.6875rem;letter-spacing:.12em;
+  text-transform:uppercase;text-decoration:none;transition:border-color 140ms,color 140ms}
+.nd-discuss:hover{border-color:var(--amber);color:var(--amber)}
+
+.nd-back{display:block;width:100%;max-width:34rem;margin:0 auto;padding:1.25rem 1.5rem 0;
+  background:none;border:0;color:var(--muted);font-family:var(--mono);font-size:.6875rem;
+  letter-spacing:.14em;text-transform:uppercase;text-align:left;cursor:pointer}
+.nd-back:hover{color:var(--amber)}
+.nd-back:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+.nd-msg{max-width:34rem;margin:0 auto;padding:3rem 1.5rem;font-family:var(--mono);
+  font-size:.75rem;line-height:1.7;color:var(--muted)}
+.nd-msg button{background:none;border:0;border-bottom:1px solid var(--amber);
+  color:var(--amber);font:inherit;padding:0;cursor:pointer}
+
+@media (max-width:30rem){
+  .nd-timeline{padding:2rem 1.125rem 3rem}
+  .nd{padding:1rem 1.125rem 4rem;font-size:1rem}
+  .nd-entry{grid-template-columns:2.25rem 1fr}
+  .nd-entry__title{font-size:1.1875rem}
+}
 </style>
+
+<!-- Butterchurn preset packs. They attach to window.base / window.extra.
+     Mirror these two files into the repo if you'd rather not depend on unpkg. -->
+<script src="https://unpkg.com/butterchurn-presets@3.0.0-beta.4/dist/base.min.js"></script>
 </head>
+
 <body>
-<div class="deck">
 
-  <div class="top">
-    <h1 class="mark">Night<b>deck</b></h1>
-    <div class="status" id="status"><span class="dot"></span><span id="statusText">Warming up</span></div>
+<canvas id="viz" aria-hidden="true"></canvas>
+<div id="viz-shade" aria-hidden="true"></div>
+<audio id="au" crossorigin="anonymous" preload="none"></audio>
+
+<header id="transport">
+  <button class="tp-btn" id="play" aria-pressed="false" aria-label="Play">
+    <svg class="icon-play" viewBox="0 0 12 14"><path d="M0 0l12 7-12 7z"/></svg>
+    <svg class="icon-pause" viewBox="0 0 12 14"><path d="M0 0h4v14H0zM8 0h4v14H8z"/></svg>
+  </button>
+  <div class="tp-now">
+    <span class="tp-lamp" aria-hidden="true"></span>
+    <span class="tp-track" id="track">Nothing playing</span>
+    <span class="tp-artist" id="artist">nightdeck</span>
   </div>
+  <button class="tp-posts" id="posts-toggle" aria-expanded="false" aria-controls="drawer">Posts</button>
+</header>
 
-  <div class="window">
-    <canvas id="cv"></canvas>
-    <div class="gate" id="gate">
-      <div>
-        <button class="tune" id="tune" disabled>Tune in</button>
-        <small id="gateNote">Reading the library</small>
-      </div>
-    </div>
-  </div>
+<section id="drawer" aria-label="Posts" inert>
+  <button class="dw-close" id="drawer-close" aria-label="Close posts">✕</button>
+  <div class="dw-scroll" id="drawer-content"></div>
+</section>
 
-  <div class="strip">
-    <div class="ticks" id="ticks"></div>
-    <div class="needle" id="needle" style="left:0"></div>
-  </div>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 
-  <div class="now">
-    <h2 class="title" id="title">&mdash;</h2>
-    <div class="line">
-      <span id="artist">&nbsp;</span>
-    </div>
-    <div class="line" style="margin-top:4px">
-      <em id="clock" style="font-style:normal">0:00</em><span>/</span><em id="dur" style="font-style:normal">0:00</em>
-      <em id="mixing" class="mixing" style="display:none; margin-left:10px">mixing</em>
-    </div>
-  </div>
+<script type="module">
+import butterchurn from 'https://unpkg.com/butterchurn@3.0.0-beta.5/dist/butterchurn.js';
 
-  <div class="bar">
-    <button class="play" id="play" aria-label="Play">
-      <svg id="icon" viewBox="0 0 12 14"><path d="M0 0l12 7-12 7z"/></svg>
-    </button>
-    <div class="vol">
-      <label for="vol">VOL</label>
-      <input type="range" id="vol" min="0" max="1" step="0.01" value="0.75" aria-label="Volume">
-    </div>
-    <div class="up">
-      <b>Up next</b>
-      <u id="next">&mdash;</u>
-    </div>
-  </div>
+/* ═══════════════════════════════════════════════════════════════════
+   Config — the only block you should need to edit
+   ═══════════════════════════════════════════════════════════════════ */
 
-</div>
+const CFG = {
+  // audio: a JSON array of { url, title, artist } (or plain URL strings)
+  manifest: 'https://szk5334.github.io/lofi-library/manifest.json',
 
-<script>
-(function(){
-"use strict";
+  // notes: where the markdown lives
+  owner: 'szk5334',
+  repo:  'lofi-player',
+  dir:   'posts',
+  branch:'main',
 
-/* ------------------------------------------------------------------ *
- * CONFIG
- *
- * FADE — crossfade length in seconds. This is load-bearing for the
- *   sync: with an overlap, each track only advances the station by
- *   (duration - FADE), so the schedule is walked over those effective
- *   durations. Changing FADE changes the block length and therefore
- *   reshuffles the schedule for everyone. Pick a number and leave it.
- *
- * EPOCH — station sign-on. Same warning, more so.
- * ------------------------------------------------------------------ */
-var CONFIG = {
-  BASE:  "https://szk5334.github.io/lofi-library/",
-  EPOCH: Date.UTC(2026, 0, 1, 0, 0, 0),
-  FADE:  5
+  discussions: 'https://github.com/szk5334/lofi-player/discussions',
+
+  presetHold: 22000,   // ms before drifting to the next preset
+  blend: 5.5           // seconds of crossfade between presets
 };
 
-var $ = function(id){ return document.getElementById(id); };
-var noop = function(){};
-var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+/* ═══════════════════════════════════════════════════════════════════
+   Visualizer
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* ---------- state ---------- */
-var tracks = [], order = [], idx = 0, block = 0, total = 0;
-var synced = false, started = false, misses = 0;
-var active = 0, fading = false, armed = null;
+const canvas = document.getElementById('viz');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---------- deterministic shuffle ---------- */
-function mulberry32(a){
-  return function(){
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    var t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+let audioCtx = null, viz = null, srcNode = null, tap = null;
+let rendering = false, cycle = null, fallbackRAF = null;
+
+function webgl2() {
+  try { return !!document.createElement('canvas').getContext('webgl2'); }
+  catch { return false; }
+}
+
+function sizeRenderer() {
+  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  const w = Math.round(canvas.clientWidth * dpr);
+  const h = Math.round(canvas.clientHeight * dpr);
+  canvas.width = w; canvas.height = h;
+  if (viz) viz.setRendererSize(w, h);
+}
+addEventListener('resize', sizeRenderer);
+
+function presetPool() {
+  const all = {};
+  if (window.base?.default) Object.assign(all, window.base.default);
+  if (window.extra?.default) Object.assign(all, window.extra.default);
+  return all;
+}
+
+function startVisualizer() {
+  if (viz || !webgl2() || reduce) return false;
+
+  const presets = presetPool();
+  const keys = Object.keys(presets);
+  if (!keys.length) return false;
+
+  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  viz = butterchurn.createVisualizer(audioCtx, canvas, {
+    width:  Math.round(canvas.clientWidth * dpr),
+    height: Math.round(canvas.clientHeight * dpr),
+    pixelRatio: 1,      // we've already baked dpr into width/height
+    textureRatio: 1
+  });
+
+  // Butterchurn runs ~0.26s behind the audio it analyses, so the demo
+  // delays the *audible* path to match. Without this the visuals lag
+  // the music by a noticeable beat.
+  tap = audioCtx.createDelay();
+  tap.delayTime.value = 0.26;
+  tap.connect(audioCtx.destination);
+  viz.connectAudio(tap);
+
+  const roll = (blend) => {
+    const k = keys[Math.floor(Math.random() * keys.length)];
+    viz.loadPreset(presets[k], blend);
   };
-}
-function shuffle(arr, seed){
-  var a = arr.slice(), rnd = mulberry32((seed * 2654435761) >>> 0);
-  for (var i = a.length - 1; i > 0; i--){
-    var j = Math.floor(rnd() * (i + 1));
-    var t = a[i]; a[i] = a[j]; a[j] = t;
-  }
-  return a;
-}
+  roll(0);
+  cycle = setInterval(() => roll(CFG.blend), CFG.presetHold);
 
-/* How much of the station's clock one track consumes. Overlap means
-   less than its full length. */
-function slot(t){
-  return Math.max((t.dur || 0) - CONFIG.FADE, 1);
-}
+  cancelAnimationFrame(fallbackRAF);
+  rendering = true;
 
-function scheduleAt(when){
-  var elapsed = Math.max(0, (when - CONFIG.EPOCH) / 1000);
-  var b   = Math.floor(elapsed / total);
-  var off = elapsed - b * total;
-  var ord = shuffle(tracks, b);
-  for (var i = 0; i < ord.length; i++){
-    var s = slot(ord[i]);
-    if (off < s) return { order: ord, index: i, offset: off, block: b };
-    off -= s;
-  }
-  return { order: ord, index: 0, offset: 0, block: b };
+  let last = 0;
+  (function loop(now) {
+    if (!rendering) return;
+    requestAnimationFrame(loop);
+    // half rate while the drawer covers it — saves battery, still alive underneath
+    const gap = document.body.classList.contains('drawer-open') ? 42 : 0;
+    if (now - last < gap) return;
+    last = now;
+    viz.render();
+  })(0);
+
+  return true;
 }
 
-/* ---------- playlist ---------- */
-function url(t){
-  return CONFIG.BASE + t.file.split("/").map(encodeURIComponent).join("/");
-}
-function prettify(file){
-  return file.split("/").pop().replace(/\.mp3$/i, "")
-             .replace(/[_+]+/g, " ").replace(/\s+/g, " ").trim();
-}
-function fmt(s){
-  if (!isFinite(s) || s < 0) s = 0;
-  var m = Math.floor(s / 60), r = Math.floor(s % 60);
-  return m + ":" + (r < 10 ? "0" : "") + r;
-}
-function label(t){ return t ? (t.title || prettify(t.file)) : "\u2014"; }
-
-function load(){
-  return fetch(CONFIG.BASE + "playlist.json", { cache: "no-cache" })
-    .then(function(r){
-      if (!r.ok) throw new Error("playlist " + r.status);
-      return r.json();
-    })
-    .then(function(raw){
-      var list = Array.isArray(raw) ? raw : (raw && raw.tracks) || [];
-      return list.map(function(t){
-        if (typeof t === "string") return { file: t, dur: 0, title: null, artist: null };
-        return {
-          file:   t.file,
-          dur:    typeof t.dur === "number" ? t.dur : 0,
-          title:  t.title  || null,
-          artist: t.artist || null
-        };
-      }).filter(function(t){ return t.file; });
-    });
-}
-
-/* ------------------------------------------------------------------ *
- * AUDIO
- *
- * Two decks, like a real one. Each <audio> gets its own source node
- * (createMediaElementSource can only be called once per element), its
- * own gain for the fade, and both feed a shared mix bus.
- *
- *   deck A -> gainA -\
- *                     >-- mix --+--> analyser        (visualiser tap)
- *   deck B -> gainB -/          \--> master -> out   (volume)
- *
- * The analyser hangs off mix rather than master so the smoke keeps
- * moving when you pull the volume down.
- * ------------------------------------------------------------------ */
-var decks = [
-  { el: new Audio(), gain: null, src: null },
-  { el: new Audio(), gain: null, src: null }
-];
-decks.forEach(function(d){ d.el.preload = "auto"; });
-
-var actx = null, analyser = null, freq = null, mix = null, master = null;
-var vol = 0.75;
-
-function graph(){
-  if (actx) return;
-  var AC = window.AudioContext || window.webkitAudioContext;
-  actx = new AC();
-
-  mix    = actx.createGain();
-  master = actx.createGain();
-  master.gain.value = vol;
-
-  analyser = actx.createAnalyser();
-  analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0.84;
-  freq = new Uint8Array(analyser.frequencyBinCount);
-
-  mix.connect(analyser);
-  mix.connect(master);
-  master.connect(actx.destination);
-
-  decks.forEach(function(d){
-    d.node = actx.createMediaElementSource(d.el);
-    d.gain = actx.createGain();
-    d.gain.gain.value = 0;
-    d.node.connect(d.gain);
-    d.gain.connect(mix);
-  });
-}
-
-/* Equal-power curves. A linear crossfade dips in the middle, because
-   two uncorrelated signals at 0.5 sum to less than one at 1.0 — you
-   hear it as a small hole. sin/cos keeps the power constant. */
-function curve(rising){
-  var n = 64, c = new Float32Array(n);
-  for (var i = 0; i < n; i++){
-    var t = (i / (n - 1)) * Math.PI / 2;
-    c[i] = rising ? Math.sin(t) : Math.cos(t);
-  }
-  return c;
-}
-var UP = curve(true), DOWN = curve(false);
-
-function applyFade(param, rising, secs){
-  var t0 = actx.currentTime;
-  try {
-    param.cancelScheduledValues(t0);
-    param.setValueCurveAtTime(rising ? UP : DOWN, t0, secs);
-  } catch(e){
-    /* older Safari throws on overlapping curves */
-    param.cancelScheduledValues(t0);
-    param.setValueAtTime(param.value, t0);
-    param.linearRampToValueAtTime(rising ? 1 : 0, t0 + secs);
-  }
-}
-
-/* iOS won't let an <audio> element play programmatically unless it has
-   been played once from a real user gesture. Deck B never gets one, so
-   we spend the tune-in tap on both. */
-function unlock(){
-  decks.forEach(function(d){
-    var p = d.el.play();
-    if (p && p.then) p.then(function(){ d.el.pause(); }).catch(noop);
-    else { try { d.el.pause(); } catch(e){} }
-  });
-}
-
-function setSrc(d, t){
-  var u = url(t);
-  if (d.src === u) return;
-  d.el.src = u;
-  d.src = u;
-  d.el.load();
-}
-
-/* Hard start — tune-in, and gross-drift correction. No overlap here. */
-function cue(i, offset){
-  idx = i;
-  armed = null;
-  fading = false;
-  var a = decks[active], b = decks[1 - active];
-
-  b.el.pause();
-  b.gain.gain.cancelScheduledValues(actx.currentTime);
-  b.gain.gain.value = 0;
-
-  setSrc(a, order[idx]);
-  var seek = function(){
-    if (offset > 1 && offset < (a.el.duration || Infinity) - 2){
-      try { a.el.currentTime = offset; } catch(e){}
-    }
-    a.el.removeEventListener("loadedmetadata", seek);
-  };
-  if (a.el.readyState >= 1) seek();
-  else a.el.addEventListener("loadedmetadata", seek);
-
-  a.gain.gain.cancelScheduledValues(actx.currentTime);
-  a.gain.gain.value = 0;
-  applyFade(a.gain.gain, true, 0.6);
-  a.el.play().catch(noop);
-
-  paintMeta();
-}
-
-/* What plays after the current track, taken from the clock so the
-   station self-corrects instead of accumulating drift. */
-function nextSlot(){
-  if (!synced) return { index: (idx + 1) % order.length, track: order[(idx + 1) % order.length] };
-  var a = decks[active].el;
-  var s = slot(order[idx]);
-  var remain = Math.max(0, s - (a.currentTime || 0));
-  var sc = scheduleAt(Date.now() + (remain + 0.5) * 1000);
-  return { index: sc.index, track: sc.order[sc.index], order: sc.order, block: sc.block };
-}
-
-function armNext(){
-  armed = nextSlot();
-  if (armed && armed.track) setSrc(decks[1 - active], armed.track);
-}
-
-function startCrossfade(){
-  if (fading) return;
-  if (!armed) armNext();
-  if (!armed || !armed.track) return;
-
-  var from = active, to = 1 - active;
-  var b = decks[to];
-
-  try { b.el.currentTime = 0; } catch(e){}
-  b.el.play().catch(noop);
-
-  applyFade(decks[from].gain.gain, false, CONFIG.FADE);
-  applyFade(b.gain.gain, true, CONFIG.FADE);
-
-  active = to;
-  idx = armed.index;
-  if (armed.order){ order = armed.order; block = armed.block; }
-  armed = null;
-  fading = true;
-  $("mixing").style.display = "";
-  $("title").classList.add("blend");
-
-  setTimeout(function(){
-    decks[from].el.pause();
-    decks[from].gain.gain.cancelScheduledValues(actx.currentTime);
-    decks[from].gain.gain.value = 0;
-    fading = false;
-    $("mixing").style.display = "none";
-    $("title").classList.remove("blend");
-  }, (CONFIG.FADE + 0.3) * 1000);
-
-  paintMeta();
-}
-
-/* Driver. Uses the file's real duration where the browser knows it,
-   so a wrong number in playlist.json can't cut a track short. */
-function tick(){
-  if (!started || !actx) return;
-  var a = decks[active].el;
-  if (a.paused || !isFinite(a.duration) || !a.duration) return;
-
-  var end = Math.max(a.duration - CONFIG.FADE, 1);
-  var remain = end - a.currentTime;
-
-  if (!armed && !fading && remain < 30) armNext();
-  if (!fading && remain <= 0.15) startCrossfade();
-
-  $("clock").textContent = fmt(a.currentTime);
-  $("dur").textContent   = fmt(a.duration);
-}
-setInterval(tick, 200);
-
-/* Fallback: if a track runs out before the fade fired, move on. */
-decks.forEach(function(d, i){
-  d.el.addEventListener("ended", function(){
-    if (i === active && !fading) startCrossfade();
-  });
-  d.el.addEventListener("error", function(){
-    if (i !== active) { armed = null; return; }   // bad preload, just re-arm
-    if (++misses > 8){ fail("Too many tracks failed to load. Check the library URLs."); return; }
-    startCrossfade();
-  });
-  d.el.addEventListener("loadedmetadata", function(){ if (i === active) misses = 0; });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) rendering = false;
+  else if (viz) { rendering = true;
+    (function loop(){ if(!rendering) return; requestAnimationFrame(loop); viz.render(); })(); }
 });
 
-/* Gross-drift guard: sleeping tabs, block rollovers. */
-setInterval(function(){
-  if (!started || !synced || fading || decks[active].el.paused) return;
-  var s = scheduleAt(Date.now());
-  if (s.block !== block || s.index !== idx || Math.abs(s.offset - decks[active].el.currentTime) > 25){
-    order = s.order; block = s.block;
-    cue(s.index, s.offset);
-  }
-}, 20000);
+/* Fallback: no WebGL2, or reduced motion. Soft drifting smoke. */
+(function fallback() {
+  if (viz) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  let W, H, dpr;
+  const fit = () => { dpr = Math.min(devicePixelRatio||1,1.5);
+    W = canvas.clientWidth; H = canvas.clientHeight;
+    canvas.width = W*dpr; canvas.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
+  fit(); addEventListener('resize', fit);
 
-/* ---------- painting ---------- */
-function paintMeta(){
-  var t = order[idx];
-  if (!t) return;
-  $("title").textContent  = label(t);
-  $("artist").textContent = t.artist || "Unknown artist";
-  var n = nextSlot();
-  $("next").textContent = n ? label(n.track) : "\u2014";
-  needle();
-}
+  const TINTS = [[111,179,184],[232,163,61],[86,96,140],[198,120,150]];
+  const puffs = Array.from({length:18},(_,i)=>({
+    x:Math.random(), y:Math.random(), r:130+Math.random()*250,
+    vx:(Math.random()-.5)*0.00016, vy:-0.00006-Math.random()*0.00012,
+    t:TINTS[i%TINTS.length], a:.05+Math.random()*.07, ph:Math.random()*6.28 }));
 
-function renderTicks(){
-  var box = $("ticks");
-  box.innerHTML = "";
-  var n = order.length;
-  if (!n) return;
-  var step = n > 90 ? Math.ceil(n / 90) : 1;
-  for (var i = 0; i < n; i += step){
-    var el = document.createElement("i");
-    el.style.left = (i / n * 100) + "%";
-    if (i % (step * 10) === 0) el.className = "q";
-    box.appendChild(el);
-  }
-}
+  if (reduce) { ctx.fillStyle = '#14161c'; ctx.fillRect(0,0,W,H); return; }
 
-function needle(){
-  var frac;
-  if (synced && total){
-    frac = (Math.max(0, (Date.now() - CONFIG.EPOCH) / 1000) % total) / total;
-  } else {
-    frac = order.length ? idx / order.length : 0;
-  }
-  $("needle").style.left = (frac * 100) + "%";
-}
-setInterval(needle, 1000);
-
-function status(text, live){
-  $("statusText").textContent = text;
-  $("status").classList.toggle("live", !!live);
-}
-function fail(msg){
-  status("Off air", false);
-  $("gate").classList.remove("out");
-  $("gate").hidden = false;
-  $("tune").disabled = true;
-  $("tune").textContent = "Off air";
-  $("gateNote").textContent = msg;
-}
-
-/* ---------- the smoke ---------- */
-var cv = $("cv"), ctx = cv.getContext("2d");
-var W = 0, H = 0, DPR = Math.min(devicePixelRatio || 1, 2);
-var FW = 220, FH = 138;
-var buf = [document.createElement("canvas"), document.createElement("canvas")];
-var bx = buf.map(function(c){ c.width = FW; c.height = FH; return c.getContext("2d"); });
-var cur = 0, BANDS = 6, level = new Float32Array(BANDS);
-
-var grain = (function(){
-  var g = document.createElement("canvas"); g.width = g.height = 96;
-  var gc = g.getContext("2d"), im = gc.createImageData(96, 96), d = im.data;
-  for (var i = 0; i < d.length; i += 4){
-    var v = 118 + Math.random() * 68;
-    d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255;
-  }
-  gc.putImageData(im, 0, 0);
-  return g;
+  (function draw(now) {
+    if (viz) return;                       // butterchurn took over
+    fallbackRAF = requestAnimationFrame(draw);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#14161c'; ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of puffs) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.y < -.3) { p.y = 1.3; p.x = Math.random(); }
+      if (p.x < -.3) p.x = 1.3; if (p.x > 1.3) p.x = -.3;
+      const r = p.r * (1 + Math.sin(now*0.00022 + p.ph)*0.14);
+      const cx = p.x*W, cy = p.y*H;
+      const g = ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+      const [cr,cg,cb] = p.t;
+      g.addColorStop(0, `rgba(${cr},${cg},${cb},${p.a})`);
+      g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx,cy,r,0,6.284); ctx.fill();
+    }
+  })(0);
 })();
 
-function resize(){
-  var r = cv.getBoundingClientRect();
-  W = Math.max(1, Math.round(r.width * DPR));
-  H = Math.max(1, Math.round(r.height * DPR));
-  cv.width = W; cv.height = H;
+/* ═══════════════════════════════════════════════════════════════════
+   Audio
+   ═══════════════════════════════════════════════════════════════════ */
+
+const au      = document.getElementById('au');
+const playBtn = document.getElementById('play');
+const trackEl = document.getElementById('track');
+const artistEl= document.getElementById('artist');
+
+let queue = [], qi = 0, ready = false;
+
+const shuffle = a => { for (let i=a.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+async function loadLibrary() {
+  try {
+    const res = await fetch(CFG.manifest, { cache: 'no-cache' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const raw = await res.json();
+    const list = Array.isArray(raw) ? raw : (raw.tracks || []);
+    queue = shuffle(list.map(t => typeof t === 'string'
+      ? { url: t, title: decodeURIComponent(t.split('/').pop().replace(/\.\w+$/, '')), artist: '' }
+      : t));
+    ready = queue.length > 0;
+    if (!ready) throw new Error('empty manifest');
+    trackEl.textContent = 'Ready';
+  } catch (e) {
+    console.error('library:', e);
+    trackEl.textContent = 'Library unavailable';
+    artistEl.textContent = 'check manifest.json';
+    playBtn.disabled = true;
+  }
 }
-addEventListener("resize", resize);
+loadLibrary();
 
-function mixc(a, b, t){
-  return "rgba(" + Math.round(a[0]+(b[0]-a[0])*t) + "," +
-                   Math.round(a[1]+(b[1]-a[1])*t) + "," +
-                   Math.round(a[2]+(b[2]-a[2])*t) + ",";
+function show(t) {
+  trackEl.textContent = t.title || 'Untitled';
+  artistEl.textContent = t.artist || 'nightdeck';
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: t.title || 'Untitled', artist: t.artist || 'NIGHTDECK', album: 'NIGHTDECK'
+    });
+  }
 }
-var LAMP = [255,111,145], GLOW = [127,209,201];
 
-function frame(t){
-  requestAnimationFrame(frame);
-  if (!W) resize();
+function cue(i) {
+  const t = queue[i % queue.length];
+  au.src = t.url;
+  show(t);
+  // preload the next one so the gap between tracks stays short
+  const n = queue[(i + 1) % queue.length];
+  if (n) { const pre = new Image(); pre.src = n.url; }
+}
 
-  if (analyser && !decks[active].el.paused){
-    analyser.getByteFrequencyData(freq);
-    var bins = freq.length;
-    for (var b = 0; b < BANDS; b++){
-      var lo = Math.floor(Math.pow(bins, b / BANDS));
-      var hi = Math.floor(Math.pow(bins, (b + 1) / BANDS));
-      var sum = 0, n = 0;
-      for (var k = lo; k < hi && k < bins; k++){ sum += freq[k]; n++; }
-      var v = n ? (sum / n) / 255 : 0;
-      level[b] += (v - level[b]) * 0.18;
+async function start() {
+  if (!audioCtx) {
+    // Must be created inside the tap — mobile browsers refuse otherwise.
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    srcNode = audioCtx.createMediaElementSource(au);
+    if (!startVisualizer()) srcNode.connect(audioCtx.destination);
+    else srcNode.connect(tap);   // tap already goes to destination
+    cue(qi);
+  }
+  await audioCtx.resume();
+  await au.play();
+}
+
+playBtn.addEventListener('click', async () => {
+  if (!ready) return;
+  try {
+    if (au.paused) { await start(); }
+    else { au.pause(); }
+  } catch (e) {
+    console.error('playback:', e);
+    trackEl.textContent = "That track wouldn't play";
+  }
+});
+
+au.addEventListener('play',  () => {
+  playBtn.setAttribute('aria-pressed','true');
+  playBtn.setAttribute('aria-label','Pause');
+  document.body.classList.add('is-playing');
+});
+au.addEventListener('pause', () => {
+  playBtn.setAttribute('aria-pressed','false');
+  playBtn.setAttribute('aria-label','Play');
+  document.body.classList.remove('is-playing');
+});
+au.addEventListener('ended', () => { qi++; cue(qi); au.play().catch(()=>{}); });
+au.addEventListener('error', () => { qi++; cue(qi); au.play().catch(()=>{}); });
+
+/* ═══════════════════════════════════════════════════════════════════
+   Notes
+   ═══════════════════════════════════════════════════════════════════ */
+
+const drawer  = document.getElementById('drawer');
+const toggle  = document.getElementById('posts-toggle');
+const host    = document.getElementById('drawer-content');
+const closeBt = document.getElementById('drawer-close');
+
+/* --- source ------------------------------------------------------
+   Buildless: ask GitHub what's in the posts folder. Filenames carry
+   the date and the slug, so one call renders the whole timeline.
+
+   Jekyll instead? Replace listNotes with:
+     const r = await fetch('/notes.json');
+     return (await r.json()).notes;
+   and drop the front-matter parsing below — Jekyll already did it.
+------------------------------------------------------------------ */
+
+const API = `https://api.github.com/repos/${CFG.owner}/${CFG.repo}/contents/${CFG.dir}?ref=${CFG.branch}`;
+const RAW = n => `https://raw.githubusercontent.com/${CFG.owner}/${CFG.repo}/${CFG.branch}/${CFG.dir}/${n}`;
+
+let index = null;
+const bodies = new Map();
+
+async function listNotes() {
+  if (index) return index;
+
+  // Cache for an hour. Unauthenticated GitHub API is 60 requests/hour
+  // per IP, and a returning listener shouldn't spend one.
+  try {
+    const hit = JSON.parse(localStorage.getItem('nd.index') || 'null');
+    if (hit && Date.now() - hit.at < 3600e3) return (index = hit.notes);
+  } catch {}
+
+  const res = await fetch(API, { cache: 'no-cache' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+
+  index = (await res.json())
+    .filter(f => f.type === 'file' && f.name.endsWith('.md') && !f.name.startsWith('_'))
+    .map(f => {
+      const m = f.name.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
+      return {
+        file: f.name,
+        date: m ? m[1] : '1970-01-01',
+        slug: m ? m[2] : f.name.replace(/\.md$/, ''),
+        title: (m ? m[2] : f.name).replace(/-/g, ' ').replace(/^./, c => c.toUpperCase())
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  try { localStorage.setItem('nd.index', JSON.stringify({ at: Date.now(), notes: index })); } catch {}
+  return index;
+}
+
+/* --- markdown ---------------------------------------------------- */
+
+function splitFrontMatter(md) {
+  const m = md.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!m) return { meta: {}, body: md };
+  const meta = {};
+  for (const line of m[1].split(/\r?\n/)) {
+    const kv = line.match(/^(\w+):\s*(.*)$/);
+    if (kv) meta[kv[1]] = kv[2].trim().replace(/^["']|["']$/g, '');
+  }
+  return { meta, body: md.slice(m[0].length) };
+}
+
+/* GitHub alert syntax doubles as our callouts:
+     > [!NOTE]  → digest      > [!TIP]  → your commentary
+   Written this way the raw .md renders properly on github.com too. */
+function styleCallouts(root) {
+  root.querySelectorAll('blockquote').forEach(bq => {
+    const first = bq.querySelector('p');
+    if (!first) return;
+    const tag = first.textContent.match(/^\[!(NOTE|TIP)\]\s*/i);
+    if (!tag) return;
+    bq.classList.add(tag[1].toUpperCase() === 'NOTE' ? 'nd-digest' : 'nd-note');
+    first.innerHTML = first.innerHTML.replace(/^\[!(NOTE|TIP)\]\s*(<br\s*\/?>)?/i, '');
+    if (!first.textContent.trim() && !first.querySelector('img')) first.remove();
+  });
+}
+
+const fmt = iso => new Date(iso + 'T00:00:00')
+  .toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).toLowerCase();
+
+/* --- views -------------------------------------------------------- */
+
+function message(html) { host.innerHTML = `<p class="nd-msg">${html}</p>`; }
+
+async function showTimeline() {
+  message('Reading the log…');
+  try {
+    const notes = await listNotes();
+    if (!notes.length) return message('Nothing posted yet. The first note lands here.');
+
+    let year = null;
+    const out = ['<ol class="nd-timeline">'];
+    for (const n of notes) {
+      const y = n.date.slice(0, 4);
+      if (y !== year) { year = y; out.push(`<li class="nd-timeline__year" aria-hidden="true">${y}</li>`); }
+      out.push(`<li class="nd-timeline__item">
+        <button class="nd-entry" data-file="${n.file}">
+          <span class="nd-entry__rail" aria-hidden="true"></span>
+          <span class="nd-entry__date">${fmt(n.date)}</span>
+          <span class="nd-entry__title">${n.title}</span>
+          <span class="nd-entry__blurb" data-blurb></span>
+        </button></li>`);
     }
-  } else {
-    for (var b2 = 0; b2 < BANDS; b2++) level[b2] += (0.05 - level[b2]) * 0.05;
+    out.push('</ol>');
+    host.innerHTML = out.join('');
+    host.scrollTop = 0;
+    location.hash = '';
+  } catch (e) {
+    console.error('timeline:', e);
+    message("The log didn't load. <button data-retry>Try again</button>");
+    host.querySelector('[data-retry]')?.addEventListener('click', () => {
+      index = null; try { localStorage.removeItem('nd.index'); } catch {}; showTimeline();
+    });
   }
-
-  var dst = bx[1 - cur], dstC = buf[1 - cur], srcC = buf[cur];
-  var time = t / 1000;
-
-  dst.setTransform(1, 0, 0, 1, 0, 0);
-  dst.clearRect(0, 0, FW, FH);
-  dst.globalAlpha = reduce ? 0.86 : 0.951;
-  var s = reduce ? 1.004 : 1.016;
-  var sway = reduce ? 0 : Math.sin(time * 0.21) * 1.1;
-  dst.setTransform(s, 0, 0, s, (FW * (1 - s)) / 2 + sway, (FH * (1 - s)) / 2 - (reduce ? 0.2 : 1.15));
-  dst.drawImage(srcC, 0, 0);
-  dst.setTransform(1, 0, 0, 1, 0, 0);
-  dst.globalAlpha = 1;
-
-  dst.globalCompositeOperation = "lighter";
-  for (var i = 0; i < BANDS; i++){
-    var e = level[i];
-    if (e < 0.02) continue;
-    var px = FW * (0.12 + 0.76 * (i / (BANDS - 1)))
-           + Math.sin(time * (0.29 + i * 0.11) + i * 2.1) * FW * 0.075;
-    var py = FH * 0.9 - Math.cos(time * (0.19 + i * 0.07) + i) * FH * 0.05 - e * FH * 0.1;
-    var rad = FH * (0.09 + e * 0.4);
-    var tint = mixc(LAMP, GLOW, i / (BANDS - 1));
-    var g = dst.createRadialGradient(px, py, 0, px, py, rad);
-    g.addColorStop(0,   tint + (0.42 * e).toFixed(3) + ")");
-    g.addColorStop(0.5, tint + (0.13 * e).toFixed(3) + ")");
-    g.addColorStop(1,   tint + "0)");
-    dst.fillStyle = g;
-    dst.beginPath();
-    dst.arc(px, py, rad, 0, 6.2832);
-    dst.fill();
-  }
-  dst.globalCompositeOperation = "source-over";
-  cur = 1 - cur;
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = "#0A0910";
-  ctx.fillRect(0, 0, W, H);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(dstC, 0, 0, W, H);
-
-  ctx.globalCompositeOperation = "overlay";
-  ctx.globalAlpha = 0.045;
-  for (var gx = 0; gx < W; gx += 96)
-    for (var gy = 0; gy < H; gy += 96)
-      ctx.drawImage(grain, gx, gy);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "source-over";
-  var vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.24, W/2, H/2, Math.max(W,H)*0.72);
-  vg.addColorStop(0, "rgba(10,9,16,0)");
-  vg.addColorStop(1, "rgba(10,9,16,0.82)");
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, W, H);
-}
-requestAnimationFrame(frame);
-
-/* ---------- controls ---------- */
-var PLAY  = "M0 0l12 7-12 7z";
-var PAUSE = "M0 0h4v14H0zM8 0h4v14H8z";
-function setIcon(){
-  var p = !started || decks[active].el.paused;
-  $("icon").firstElementChild.setAttribute("d", p ? PLAY : PAUSE);
-  $("play").setAttribute("aria-label", p ? "Play" : "Pause");
-}
-decks.forEach(function(d){
-  d.el.addEventListener("play", setIcon);
-  d.el.addEventListener("pause", setIcon);
-});
-
-$("play").addEventListener("click", function(){
-  if (!started) return tuneIn();
-  if (decks[active].el.paused){
-    if (actx.state === "suspended") actx.resume();
-    if (synced) rejoin(); else decks[active].el.play().catch(noop);
-  } else {
-    decks.forEach(function(d){ d.el.pause(); });
-  }
-  setIcon();
-});
-
-function rejoin(){
-  var s = scheduleAt(Date.now());
-  order = s.order; block = s.block;
-  cue(s.index, s.offset);
 }
 
-$("vol").addEventListener("input", function(){
-  vol = +this.value;
-  if (master) master.gain.value = vol;
-});
+async function openNote(file) {
+  message('Loading…');
+  try {
+    let html = bodies.get(file);
+    let meta = {};
+    if (!html) {
+      const res = await fetch(RAW(file), { cache: 'no-cache' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const parsed = splitFrontMatter(await res.text());
+      meta = parsed.meta;
+      html = marked.parse(parsed.body);
+      bodies.set(file, html);
+      bodies.set(file + ':meta', meta);
+    } else {
+      meta = bodies.get(file + ':meta') || {};
+    }
 
-addEventListener("keydown", function(e){
-  if (e.code === "Space" && !/INPUT|BUTTON/.test(e.target.tagName)){
-    e.preventDefault();
-    $("play").click();
+    const entry = (index || []).find(n => n.file === file) || {};
+    const slug  = meta.slug || entry.slug || file;
+
+    host.innerHTML = `
+      <button class="nd-back"><span aria-hidden="true">←</span> All posts</button>
+      <article class="nd">
+        <header class="nd-head">
+          <h1 class="nd-head__title">${meta.title || entry.title || 'Untitled'}</h1>
+          <p class="nd-head__stamp">${fmt(meta.date || entry.date)}</p>
+        </header>
+        <div class="nd-body"></div>
+        <a class="nd-discuss" target="_blank" rel="noopener"
+           href="${CFG.discussions}?discussions_q=${encodeURIComponent(slug)}">
+          Reply on GitHub
+        </a>
+      </article>`;
+
+    const body = host.querySelector('.nd-body');
+    body.innerHTML = html;
+    styleCallouts(body);
+
+    host.querySelector('.nd-back').addEventListener('click', showTimeline);
+    host.scrollTop = 0;
+    location.hash = slug;
+  } catch (e) {
+    console.error('note:', e);
+    message("That note didn't load. <button data-back>Back to the log</button>");
+    host.querySelector('[data-back]')?.addEventListener('click', showTimeline);
   }
-});
-
-function tuneIn(){
-  if (started) return;
-  started = true;
-  graph();
-  if (actx.state === "suspended") actx.resume();
-  unlock();
-
-  if (synced) rejoin();
-  else { order = shuffle(tracks, Math.floor(Date.now() / 864e5)); cue(0, 0); }
-
-  var gate = $("gate");
-  gate.classList.add("out");
-  setTimeout(function(){ gate.hidden = true; }, 520);
-  status(synced ? "On air \u00b7 synced" : "On air \u00b7 shuffle", true);
 }
-$("tune").addEventListener("click", tuneIn);
 
-/* ---------- boot ---------- */
-resize();
-load().then(function(list){
-  if (!list.length){ fail("The library is empty. Push some MP3s and rerun the playlist workflow."); return; }
-  tracks = list;
-  synced = tracks.every(function(t){ return t.dur > 0; });
-  total  = tracks.reduce(function(a, t){ return a + slot(t); }, 0);
-
-  if (synced){
-    var s = scheduleAt(Date.now());
-    order = s.order; block = s.block; idx = s.index;
-  } else {
-    order = shuffle(tracks, Math.floor(Date.now() / 864e5));
-    idx = 0;
-  }
-  renderTicks();
-  $("title").textContent  = label(order[idx]);
-  $("artist").textContent = (order[idx] && order[idx].artist) || "Unknown artist";
-  needle();
-  $("tune").disabled = false;
-  $("gateNote").textContent = tracks.length + " tracks \u00b7 " +
-    (total ? (total / 3600).toFixed(1) + " hours" : "durations unknown");
-  status("Standing by");
-}).catch(function(e){
-  console.error(e);
-  fail("Can\u2019t reach the library. Check that Pages is enabled on lofi-library.");
+host.addEventListener('click', e => {
+  const btn = e.target.closest('[data-file]');
+  if (btn) openNote(btn.dataset.file);
 });
 
+/* --- drawer ------------------------------------------------------- */
+
+function setDrawer(open) {
+  document.body.classList.toggle('drawer-open', open);
+  toggle.setAttribute('aria-expanded', String(open));
+  open ? drawer.removeAttribute('inert') : drawer.setAttribute('inert','');
+  if (open) host.querySelector('button, a')?.focus({ preventScroll:true });
+  else toggle.focus({ preventScroll:true });
+}
+
+toggle.addEventListener('click', () => setDrawer(!document.body.classList.contains('drawer-open')));
+closeBt.addEventListener('click', () => setDrawer(false));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) setDrawer(false);
+});
+
+/* --- boot --------------------------------------------------------- */
+
+(async function boot() {
+  await showTimeline();
+  const want = decodeURIComponent(location.hash.slice(1));
+  if (want) {
+    const n = (index || []).find(x => x.slug === want);
+    if (n) { setDrawer(true); openNote(n.file); }
+  }
 })();
 </script>
+
 </body>
 </html>
