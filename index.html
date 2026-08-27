@@ -33,7 +33,12 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
   font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
 
 /* ─── visualizer ─────────────────────────────────────────────────── */
-#viz{position:fixed;inset:0;width:100%;height:100dvh;z-index:0;display:block}
+/* The CSS filter is the hard ceiling: no preset can blow past it,
+   because it's applied at composite time, after Butterchurn draws. */
+#viz{position:fixed;inset:0;width:100%;height:100dvh;z-index:0;display:block;
+  filter:brightness(.72) saturate(.82) contrast(1.06)}
+#viz-tone{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:rgba(20,22,28,.26)}
 #viz-shade{position:fixed;inset:0 0 auto 0;height:calc(var(--top)*2.2);z-index:1;
   pointer-events:none;background:linear-gradient(to bottom,
     rgba(20,22,28,.88) 0%,rgba(20,22,28,.55) 45%,rgba(20,22,28,0) 100%)}
@@ -197,6 +202,7 @@ body.drawer-open #drawer{transform:translateY(0)}
 <body>
 
 <canvas id="viz" aria-hidden="true"></canvas>
+<div id="viz-tone" aria-hidden="true"></div>
 <div id="viz-shade" aria-hidden="true"></div>
 <audio id="au" crossorigin="anonymous" preload="none"></audio>
 
@@ -240,7 +246,16 @@ const CFG = {
   discussions: 'https://github.com/szk5334/lofi-player/discussions',
 
   presetHold: 22000,   // ms before drifting to the next preset
-  blend: 5.5           // seconds of crossfade between presets
+  blend: 5.5,          // seconds of crossfade between presets
+
+  // How hard the audio drives the visuals. Milkdrop reactivity scales
+  // with amplitude, and most white-outs are just too much signal.
+  // 1 = raw. Lower is calmer. 0.3 suits lofi.
+  drive: 0.3,
+
+  // If a preset stays brighter than this, quietly move on.
+  // 0 = black, 1 = white. Measured after the CSS filter is applied.
+  maxBrightness: 0.55
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -250,8 +265,9 @@ const CFG = {
 const canvas = document.getElementById('viz');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let audioCtx = null, viz = null, srcNode = null, tap = null;
+let audioCtx = null, viz = null, srcNode = null, tap = null, drive = null;
 let rendering = false, cycle = null, fallbackRAF = null;
+let current = '', hot = 0, rollRef = null;
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); }
@@ -295,36 +311,83 @@ function startVisualizer() {
   tap = audioCtx.createDelay();
   tap.delayTime.value = 0.26;
   tap.connect(audioCtx.destination);
-  viz.connectAudio(tap);
+
+  // The visualizer gets a quieter copy. This is the real white-out fix:
+  // Milkdrop drives brightness and displacement from amplitude, so
+  // attenuating here calms the visuals without touching what you hear.
+  drive = audioCtx.createGain();
+  drive.gain.value = CFG.drive;
+  tap.connect(drive);
+  viz.connectAudio(drive);
 
   const roll = (blend) => {
     const k = keys[Math.floor(Math.random() * keys.length)];
+    current = k;
+    hot = 0;
     viz.loadPreset(presets[k], blend);
   };
   roll(0);
+  rollRef = roll;
   cycle = setInterval(() => roll(CFG.blend), CFG.presetHold);
 
   cancelAnimationFrame(fallbackRAF);
   rendering = true;
-
-  let last = 0;
-  (function loop(now) {
-    if (!rendering) return;
-    requestAnimationFrame(loop);
-    // half rate while the drawer covers it — saves battery, still alive underneath
-    const gap = document.body.classList.contains('drawer-open') ? 42 : 0;
-    if (now - last < gap) return;
-    last = now;
-    viz.render();
-  })(0);
+  runLoop(roll);
 
   return true;
 }
 
+/* ─── brightness governor ─────────────────────────────────────────
+   Some presets bloom to white no matter how little signal they get.
+   Sample the canvas down to 8×8 and read the average luminance; if a
+   preset sits over the ceiling for three checks running, move on.
+
+   The sample has to happen in the same frame as render(), before the
+   WebGL buffer is cleared — Butterchurn doesn't set preserveDrawingBuffer,
+   so a read at any other time comes back blank.
+------------------------------------------------------------------ */
+
+const probe  = Object.assign(document.createElement('canvas'), { width: 8, height: 8 });
+const pctx   = probe.getContext('2d', { willReadFrequently: true });
+
+function brightness() {
+  try {
+    pctx.drawImage(canvas, 0, 0, 8, 8);
+    const d = pctx.getImageData(0, 0, 8, 8).data;
+    let sum = 0;
+    for (let i = 0; i < d.length; i += 4)
+      sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    return sum / (d.length / 4) / 255;
+  } catch { return 0; }
+}
+
+function runLoop(roll) {
+  let last = 0, checked = 0;
+  (function loop(now) {
+    if (!rendering) return;
+    requestAnimationFrame(loop);
+
+    // half rate while the drawer covers it — saves battery, still alive underneath
+    const gap = document.body.classList.contains('drawer-open') ? 42 : 0;
+    if (now - last < gap) return;
+    last = now;
+
+    viz.render();
+
+    if (now - checked > 1600) {
+      checked = now;
+      // brightness() is measured on the raw canvas, so compare against
+      // the ceiling scaled by the CSS filter we apply on top.
+      if (brightness() * 0.72 > CFG.maxBrightness) {
+        if (++hot >= 3) { console.info('nightdeck: dropping bright preset', current); roll(2.5); }
+      } else hot = 0;
+    }
+  })(0);
+}
+
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) rendering = false;
-  else if (viz) { rendering = true;
-    (function loop(){ if(!rendering) return; requestAnimationFrame(loop); viz.render(); })(); }
+  if (document.hidden) { rendering = false; }
+  else if (viz && !rendering) { rendering = true; runLoop(rollRef); }
 });
 
 /* Fallback: no WebGL2, or reduced motion. Soft drifting smoke. */
