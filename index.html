@@ -381,22 +381,35 @@ let queue = [], qi = 0, ready = false;
 const shuffle = a => { for (let i=a.length-1;i>0;i--){
   const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 
+// Track URLs in the manifest are relative to the manifest itself, so the
+// library keeps working if it ever moves to another host.
+const resolve = u => new URL(u, CFG.manifest).href;
+
 async function loadLibrary() {
   try {
     const res = await fetch(CFG.manifest, { cache: 'no-cache' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) throw new Error(`manifest returned ${res.status}`);
+
     const raw = await res.json();
     const list = Array.isArray(raw) ? raw : (raw.tracks || []);
-    queue = shuffle(list.map(t => typeof t === 'string'
-      ? { url: t, title: decodeURIComponent(t.split('/').pop().replace(/\.\w+$/, '')), artist: '' }
-      : t));
-    ready = queue.length > 0;
-    if (!ready) throw new Error('empty manifest');
+    if (!list.length) throw new Error('manifest has no tracks');
+
+    queue = shuffle(list.map(t => {
+      if (typeof t === 'string') {
+        const name = decodeURIComponent(t.split('/').pop().replace(/\.\w+$/, ''));
+        return { url: resolve(t), title: name, artist: '' };
+      }
+      return { ...t, url: resolve(t.url || t.src || t.file || t.path) };
+    }));
+
+    ready = true;
     trackEl.textContent = 'Ready';
+    artistEl.textContent = `${queue.length} tracks`;
   } catch (e) {
     console.error('library:', e);
-    trackEl.textContent = 'Library unavailable';
-    artistEl.textContent = 'check manifest.json';
+    // Say what actually broke — the console isn't reachable on a phone.
+    trackEl.textContent = e.message;
+    artistEl.textContent = 'library';
     playBtn.disabled = true;
   }
 }
@@ -412,13 +425,20 @@ function show(t) {
   }
 }
 
+// A second, silent audio element warms the next track into the HTTP cache.
+// (An Image() won't do this — the browser rejects the decode and gives up.)
+const pre = new Audio();
+pre.crossOrigin = 'anonymous';
+pre.preload = 'auto';
+pre.muted = true;
+
 function cue(i) {
   const t = queue[i % queue.length];
   au.src = t.url;
   show(t);
-  // preload the next one so the gap between tracks stays short
-  const n = queue[(i + 1) % queue.length];
-  if (n) { const pre = new Image(); pre.src = n.url; }
+
+  const next = queue[(i + 1) % queue.length];
+  if (next && next.url !== t.url) { pre.src = next.url; pre.load(); }
 }
 
 async function start() {
