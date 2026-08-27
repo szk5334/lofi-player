@@ -30,7 +30,13 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
-  font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+  font-family:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased;
+  /* kills double-tap-to-zoom; pinch and pan still work */
+  touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none}
+/* text in the drawer stays selectable */
+#drawer{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 
 /* ─── visualizer ─────────────────────────────────────────────────── */
 /* The CSS filter is the hard ceiling: no preset can blow past it,
@@ -470,6 +476,9 @@ function nextPreset() { if (rollRef) { rollRef(2.5); toast('Next preset'); } }
 function banCurrent() {
   if (!rollRef || !current) return;
   ban(current, 'by hand');
+  // Android supports vibrate, so the hold gesture confirms itself
+  // without you having to look away from the visualizer.
+  navigator.vibrate?.(18);
   toast('Banned · ' + banned.size + ' total');
   rollRef(2.5);
 }
@@ -477,17 +486,43 @@ function banCurrent() {
 // Only respond on the visualizer itself, never through the UI.
 const onViz = e => !e.target.closest('#transport, #drawer');
 
-let held = null;
+/* Double-tap is detected by hand rather than with the dblclick event:
+   iOS fires dblclick inconsistently, and the browser's own
+   double-tap-to-zoom would swallow it first (see touch-action above). */
+let held = null, lastTap = 0, lastX = 0, lastY = 0;
+
 document.addEventListener('pointerdown', e => {
   if (!viz || !onViz(e)) return;
-  held = setTimeout(() => { held = null; banCurrent(); }, 650);
+
+  const now = performance.now();
+  const near = Math.hypot(e.clientX - lastX, e.clientY - lastY) < 32;
+
+  if (now - lastTap < 320 && near) {
+    // second tap — this is the gesture
+    if (held) { clearTimeout(held); held = null; }
+    lastTap = 0;
+    nextPreset();
+    return;
+  }
+
+  lastTap = now; lastX = e.clientX; lastY = e.clientY;
+  held = setTimeout(() => { held = null; lastTap = 0; banCurrent(); }, 650);
 });
+
 const release = () => { if (held) { clearTimeout(held); held = null; } };
 document.addEventListener('pointerup', release);
 document.addEventListener('pointercancel', release);
-document.addEventListener('pointermove', release);
+document.addEventListener('pointermove', e => {
+  // a real drag cancels the hold; a shaky finger shouldn't
+  if (held && (e.movementX || e.movementY) &&
+      Math.hypot(e.clientX - lastX, e.clientY - lastY) > 12) release();
+});
 
-document.addEventListener('dblclick', e => { if (viz && onViz(e)) nextPreset(); });
+// Android Chrome raises a context menu on long-press, which would
+// interrupt the ban gesture. (-webkit-touch-callout is iOS-only.)
+document.addEventListener('contextmenu', e => {
+  if (viz && onViz(e)) e.preventDefault();
+});
 
 document.addEventListener('keydown', e => {
   if (!viz || e.target.closest('input, textarea')) return;
