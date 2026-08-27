@@ -35,8 +35,34 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
 /* ─── visualizer ─────────────────────────────────────────────────── */
 /* The CSS filter is the hard ceiling: no preset can blow past it,
    because it's applied at composite time, after Butterchurn draws. */
-#viz{position:fixed;inset:0;width:100%;height:100dvh;z-index:0;display:block;
+#viz,#viz-fallback{position:fixed;inset:0;width:100%;height:100dvh;z-index:0;display:block;
   filter:brightness(.72) saturate(.82) contrast(1.06)}
+#viz[hidden],#viz-fallback[hidden]{display:none}
+.nd-viz-footer{max-width:34rem;margin:0 auto;padding:1.5rem 1.5rem 3rem;
+  border-top:1px solid var(--line)}
+.nd-viz-footer__label{font-family:var(--mono);font-size:.625rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted)}
+.nd-viz-footer__count{margin:.75rem 0 .35rem;font-size:.9375rem;line-height:1.5;
+  color:color-mix(in srgb,var(--paper) 78%,transparent)}
+.nd-viz-footer__help{margin:0;font-family:var(--mono);font-size:.6875rem;line-height:1.6;
+  color:var(--muted)}
+.nd-viz-footer__clear{margin-top:1rem;padding:.6rem 1rem;background:none;
+  border:1px solid var(--line);border-radius:2px;color:var(--muted);
+  font-family:var(--mono);font-size:.625rem;letter-spacing:.14em;text-transform:uppercase;
+  cursor:pointer;transition:border-color 140ms,color 140ms}
+.nd-viz-footer__clear:hover{border-color:var(--amber);color:var(--amber)}
+.nd-viz-footer__clear:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+@media (max-width:30rem){.nd-viz-footer{padding:1.5rem 1.125rem 2.5rem}}
+
+#nd-toast{position:fixed;left:50%;bottom:calc(2rem + env(safe-area-inset-bottom,0px));
+  transform:translate(-50%,.5rem);z-index:40;padding:.6rem 1rem;
+  background:rgba(20,22,28,.9);border:1px solid #2a2e39;border-radius:2px;
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  font-family:var(--mono);font-size:.625rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);pointer-events:none;opacity:0;
+  transition:opacity 200ms ease,transform 200ms ease}
+#nd-toast.show{opacity:1;transform:translate(-50%,0)}
+
 #viz-tone{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:rgba(20,22,28,.26)}
 #viz-shade{position:fixed;inset:0 0 auto 0;height:calc(var(--top)*2.2);z-index:1;
@@ -202,6 +228,7 @@ body.drawer-open #drawer{transform:translateY(0)}
 <body>
 
 <canvas id="viz" aria-hidden="true"></canvas>
+<canvas id="viz-fallback" aria-hidden="true"></canvas>
 <div id="viz-tone" aria-hidden="true"></div>
 <div id="viz-shade" aria-hidden="true"></div>
 <audio id="au" crossorigin="anonymous" preload="none"></audio>
@@ -253,9 +280,11 @@ const CFG = {
   // 1 = raw. Lower is calmer. 0.3 suits lofi.
   drive: 0.3,
 
-  // If a preset stays brighter than this, quietly move on.
+  // If a preset stays brighter than this, ban it for good.
   // 0 = black, 1 = white. Measured after the CSS filter is applied.
-  maxBrightness: 0.55
+  maxBrightness: 0.55,
+  settle: 1800,        // ms to ignore after a preset loads (the crossfade)
+  checkEvery: 700      // ms between brightness samples
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -263,11 +292,12 @@ const CFG = {
    ═══════════════════════════════════════════════════════════════════ */
 
 const canvas = document.getElementById('viz');
+const fb     = document.getElementById('viz-fallback');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let audioCtx = null, viz = null, srcNode = null, tap = null, drive = null;
 let rendering = false, cycle = null, fallbackRAF = null;
-let current = '', hot = 0, rollRef = null;
+let current = '', hot = 0, rollRef = null, settled = 0;
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); }
@@ -275,11 +305,15 @@ function webgl2() {
 }
 
 function sizeRenderer() {
+  if (!viz) return;
+  // Don't touch canvas.width/height here — writing them resets the WebGL
+  // drawing buffer and desyncs Butterchurn's feedback framebuffers.
+  // setRendererSize resizes both together.
   const dpr = Math.min(devicePixelRatio || 1, 1.75);
-  const w = Math.round(canvas.clientWidth * dpr);
-  const h = Math.round(canvas.clientHeight * dpr);
-  canvas.width = w; canvas.height = h;
-  if (viz) viz.setRendererSize(w, h);
+  viz.setRendererSize(
+    Math.round(canvas.clientWidth * dpr),
+    Math.round(canvas.clientHeight * dpr)
+  );
 }
 addEventListener('resize', sizeRenderer);
 
@@ -321,9 +355,13 @@ function startVisualizer() {
   viz.connectAudio(drive);
 
   const roll = (blend) => {
-    const k = keys[Math.floor(Math.random() * keys.length)];
+    const live = keys.filter(k => !banned.has(k));
+    // Everything banned? Start over rather than show nothing.
+    if (!live.length) { banned.clear(); saveBans(); return roll(blend); }
+    const k = live[Math.floor(Math.random() * live.length)];
     current = k;
     hot = 0;
+    settled = performance.now() + CFG.settle;
     viz.loadPreset(presets[k], blend);
   };
   roll(0);
@@ -331,6 +369,7 @@ function startVisualizer() {
   cycle = setInterval(() => roll(CFG.blend), CFG.presetHold);
 
   cancelAnimationFrame(fallbackRAF);
+  fb.hidden = true;
   rendering = true;
   runLoop(roll);
 
@@ -338,14 +377,23 @@ function startVisualizer() {
 }
 
 /* ─── brightness governor ─────────────────────────────────────────
-   Some presets bloom to white no matter how little signal they get.
-   Sample the canvas down to 8×8 and read the average luminance; if a
-   preset sits over the ceiling for three checks running, move on.
+   Some presets bloom to white regardless of how little signal they get.
+   Sample the canvas down to 8×8, read average luminance, and if a preset
+   sits over the ceiling twice running, ban it — permanently, in
+   localStorage, so it never comes back.
 
    The sample has to happen in the same frame as render(), before the
-   WebGL buffer is cleared — Butterchurn doesn't set preserveDrawingBuffer,
+   WebGL buffer is cleared: Butterchurn doesn't set preserveDrawingBuffer,
    so a read at any other time comes back blank.
 ------------------------------------------------------------------ */
+
+const BANS = 'nd.banned';
+const banned = new Set((() => {
+  try { return JSON.parse(localStorage.getItem(BANS) || '[]'); } catch { return []; }
+})());
+const saveBans = () => {
+  try { localStorage.setItem(BANS, JSON.stringify([...banned])); } catch {}
+};
 
 const probe  = Object.assign(document.createElement('canvas'), { width: 8, height: 8 });
 const pctx   = probe.getContext('2d', { willReadFrequently: true });
@@ -361,6 +409,13 @@ function brightness() {
   } catch { return 0; }
 }
 
+function ban(key, why) {
+  if (!key || banned.has(key)) return;
+  banned.add(key);
+  saveBans();
+  console.info(`nightdeck: banned (${why}) — ${key}`);
+}
+
 function runLoop(roll) {
   let last = 0, checked = 0;
   (function loop(now) {
@@ -374,14 +429,16 @@ function runLoop(roll) {
 
     viz.render();
 
-    if (now - checked > 1600) {
-      checked = now;
-      // brightness() is measured on the raw canvas, so compare against
-      // the ceiling scaled by the CSS filter we apply on top.
-      if (brightness() * 0.72 > CFG.maxBrightness) {
-        if (++hot >= 3) { console.info('nightdeck: dropping bright preset', current); roll(2.5); }
-      } else hot = 0;
-    }
+    // Ignore the crossfade — a blend between two presets reads bright
+    // for a moment even when neither one is.
+    if (now < settled || now - checked < CFG.checkEvery) return;
+    checked = now;
+
+    // brightness() reads the raw canvas, so scale by the CSS filter
+    // sitting on top of it before comparing.
+    if (brightness() * 0.72 > CFG.maxBrightness) {
+      if (++hot >= 2) { ban(current, 'too bright'); toast('Preset dropped'); roll(2.5); }
+    } else hot = 0;
   })(0);
 }
 
@@ -390,15 +447,75 @@ document.addEventListener('visibilitychange', () => {
   else if (viz && !rendering) { rendering = true; runLoop(rollRef); }
 });
 
-/* Fallback: no WebGL2, or reduced motion. Soft drifting smoke. */
+/* ─── manual control ──────────────────────────────────────────────
+   Double-tap the visualizer for the next preset.
+   Press and hold to ban the current one for good.
+   Keyboard: → next, X ban.
+------------------------------------------------------------------ */
+
+function toast(msg) {
+  let el = document.getElementById('nd-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'nd-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+function nextPreset() { if (rollRef) { rollRef(2.5); toast('Next preset'); } }
+function banCurrent() {
+  if (!rollRef || !current) return;
+  ban(current, 'by hand');
+  toast('Banned · ' + banned.size + ' total');
+  rollRef(2.5);
+}
+
+// Only respond on the visualizer itself, never through the UI.
+const onViz = e => !e.target.closest('#transport, #drawer');
+
+let held = null;
+document.addEventListener('pointerdown', e => {
+  if (!viz || !onViz(e)) return;
+  held = setTimeout(() => { held = null; banCurrent(); }, 650);
+});
+const release = () => { if (held) { clearTimeout(held); held = null; } };
+document.addEventListener('pointerup', release);
+document.addEventListener('pointercancel', release);
+document.addEventListener('pointermove', release);
+
+document.addEventListener('dblclick', e => { if (viz && onViz(e)) nextPreset(); });
+
+document.addEventListener('keydown', e => {
+  if (!viz || e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowRight') nextPreset();
+  if (e.key === 'x' || e.key === 'X') banCurrent();
+});
+
+// For fixing things from the console later.
+window.NIGHTDECK = {
+  get preset() { return current; },
+  get banned() { return [...banned]; },
+  next: nextPreset,
+  ban: banCurrent,
+  unbanAll() { banned.clear(); saveBans(); toast('Ban list cleared'); }
+};
+
+/* Fallback: no WebGL2, or reduced motion. Soft drifting smoke.
+   It gets its own canvas — a canvas is permanently bound to the first
+   context type requested, so taking a 2D context on #viz would make
+   getContext('webgl2') return null there forever. */
 (function fallback() {
   if (viz) return;
-  const ctx = canvas.getContext('2d');
+  const ctx = fb.getContext('2d');
   if (!ctx) return;
   let W, H, dpr;
   const fit = () => { dpr = Math.min(devicePixelRatio||1,1.5);
-    W = canvas.clientWidth; H = canvas.clientHeight;
-    canvas.width = W*dpr; canvas.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
+    W = fb.clientWidth; H = fb.clientHeight;
+    fb.width = W*dpr; fb.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
   fit(); addEventListener('resize', fit);
 
   const TINTS = [[111,179,184],[232,163,61],[86,96,140],[198,120,150]];
@@ -635,23 +752,30 @@ async function showTimeline() {
   message('Reading the log…');
   try {
     const notes = await listNotes();
-    if (!notes.length) return message('Nothing posted yet. The first note lands here.');
 
-    let year = null;
-    const out = ['<ol class="nd-timeline">'];
-    for (const n of notes) {
-      const y = n.date.slice(0, 4);
-      if (y !== year) { year = y; out.push(`<li class="nd-timeline__year" aria-hidden="true">${y}</li>`); }
-      out.push(`<li class="nd-timeline__item">
-        <button class="nd-entry" data-file="${n.file}">
-          <span class="nd-entry__rail" aria-hidden="true"></span>
-          <span class="nd-entry__date">${fmt(n.date)}</span>
-          <span class="nd-entry__title">${n.title}</span>
-          <span class="nd-entry__blurb" data-blurb></span>
-        </button></li>`);
+    let out = [];
+    if (!notes.length) {
+      out.push('<p class="nd-msg">Nothing posted yet. The first note lands here.</p>');
+    } else {
+      let year = null;
+      out.push('<ol class="nd-timeline">');
+      for (const n of notes) {
+        const y = n.date.slice(0, 4);
+        if (y !== year) { year = y; out.push(`<li class="nd-timeline__year" aria-hidden="true">${y}</li>`); }
+        out.push(`<li class="nd-timeline__item">
+          <button class="nd-entry" data-file="${n.file}">
+            <span class="nd-entry__rail" aria-hidden="true"></span>
+            <span class="nd-entry__date">${fmt(n.date)}</span>
+            <span class="nd-entry__title">${n.title}</span>
+            <span class="nd-entry__blurb" data-blurb></span>
+          </button></li>`);
+      }
+      out.push('</ol>');
     }
-    out.push('</ol>');
+    out.push(vizFooter());
+
     host.innerHTML = out.join('');
+    wireVizFooter();
     host.scrollTop = 0;
     location.hash = '';
   } catch (e) {
@@ -661,6 +785,32 @@ async function showTimeline() {
       index = null; try { localStorage.removeItem('nd.index'); } catch {}; showTimeline();
     });
   }
+}
+
+/* Visualizer housekeeping, parked at the bottom of the log — the only
+   place in the UI with room for it, and where you'll go looking. */
+function vizFooter() {
+  const n = banned.size;
+  return `<div class="nd-viz-footer">
+    <span class="nd-viz-footer__label">Visualizer</span>
+    <p class="nd-viz-footer__count">${
+      n === 0 ? 'No presets hidden.'
+              : `${n} preset${n === 1 ? '' : 's'} hidden — too bright, or you banned ${n === 1 ? 'it' : 'them'}.`
+    }</p>
+    <p class="nd-viz-footer__help">Double-tap the visualizer to skip. Press and hold to hide one.</p>
+    ${n ? '<button class="nd-viz-footer__clear" data-unban>Restore all presets</button>' : ''}
+  </div>`;
+}
+
+function wireVizFooter() {
+  host.querySelector('[data-unban]')?.addEventListener('click', () => {
+    const n = banned.size;
+    banned.clear();
+    saveBans();
+    toast(`Restored ${n} preset${n === 1 ? '' : 's'}`);
+    const box = host.querySelector('.nd-viz-footer');
+    if (box) { box.outerHTML = vizFooter(); wireVizFooter(); }
+  });
 }
 
 async function openNote(file) {
@@ -735,6 +885,14 @@ document.addEventListener('keydown', e => {
 /* --- boot --------------------------------------------------------- */
 
 (async function boot() {
+  // Escape hatch: szk5334.github.io/lofi-player/?unban
+  // Works even if the drawer is broken or you've banned every preset.
+  if (/[?&]unban\b/.test(location.search)) {
+    const n = banned.size;
+    banned.clear(); saveBans();
+    history.replaceState(null, '', location.pathname);
+    setTimeout(() => toast(`Restored ${n} preset${n === 1 ? '' : 's'}`), 400);
+  }
   await showTimeline();
   const want = decodeURIComponent(location.hash.slice(1));
   if (want) {
