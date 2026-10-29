@@ -59,6 +59,10 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
 .nd-viz-footer__clear:hover{border-color:var(--amber);color:var(--amber)}
 .nd-viz-footer__clear:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
 @media (max-width:30rem){.nd-viz-footer{padding:1.5rem 1.125rem 2.5rem}}
+.nd-votes-footer{padding-bottom:1.5rem}
+.nd-votes-footer + .nd-viz-footer{border-top-style:dashed}
+.nd-viz-footer__row{display:flex;flex-wrap:wrap;gap:.5rem}
+.nd-viz-footer__clear[data-armed]{border-color:#c4584a;color:#e08a7e}
 
 #nd-toast{position:fixed;left:50%;bottom:calc(2rem + env(safe-area-inset-bottom,0px));
   transform:translate(-50%,.5rem);z-index:40;padding:.6rem 1rem;
@@ -105,6 +109,17 @@ body.is-playing .tp-lamp{background:var(--amber);box-shadow:0 0 0 3px rgba(232,1
 .tp-artist{font-family:var(--mono);font-size:.625rem;letter-spacing:.1em;text-transform:uppercase;
   color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
 @media (max-width:26rem){.tp-artist{display:none}}
+
+.tp-votes{flex:0 0 auto;display:flex;gap:.25rem}
+.tp-vote{width:2rem;height:2rem;display:grid;place-items:center;background:none;border:0;
+  border-radius:50%;color:var(--muted);cursor:pointer;transition:color 140ms ease,background-color 140ms ease}
+.tp-vote svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.tp-vote#vote-down svg{transform:scaleY(-1)}
+.tp-vote:hover{color:var(--paper)}
+.tp-vote:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+.tp-vote:disabled{opacity:.3;cursor:default}
+.tp-vote[aria-pressed="true"]{color:var(--amber)}
+.tp-vote[aria-pressed="true"] svg{fill:currentColor}
 
 .tp-posts{flex:0 0 auto;background:none;border:0;border-left:1px solid var(--line);
   padding:.5rem 0 .5rem .875rem;color:var(--muted);font-family:var(--mono);font-size:.625rem;
@@ -249,6 +264,14 @@ body.drawer-open #drawer{transform:translateY(0)}
     <span class="tp-track" id="track">Nothing playing</span>
     <span class="tp-artist" id="artist">nightdeck</span>
   </div>
+  <div class="tp-votes" role="group" aria-label="Rate this track">
+    <button class="tp-vote" id="vote-up" aria-pressed="false" aria-label="Thumbs up" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+    </button>
+    <button class="tp-vote" id="vote-down" aria-pressed="false" aria-label="Thumbs down: skip and hide this track" disabled>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+    </button>
+  </div>
   <button class="tp-posts" id="posts-toggle" aria-expanded="false" aria-controls="drawer">Posts</button>
 </header>
 
@@ -267,8 +290,12 @@ import butterchurn from 'https://unpkg.com/butterchurn@3.0.0-beta.5/dist/butterc
    ═══════════════════════════════════════════════════════════════════ */
 
 const CFG = {
-  // audio: a JSON array of { url, title, artist } (or plain URL strings)
-  manifest: 'https://szk5334.github.io/lofi-library/manifest.json',
+  // audio: each library publishes a manifest.json of { id, url, title, artist }
+  // (or plain URL strings). All of them are shuffled together into one station.
+  libraries: [
+    { name: 'lofi', manifest: 'https://szk5334.github.io/lofi-library/manifest.json' },
+    { name: 'noir', manifest: 'https://szk5334.github.io/lofi-library-noir-jazz/manifest.json' },
+  ],
 
   // notes: where the markdown lives
   owner: 'szk5334',
@@ -596,26 +623,49 @@ let queue = [], qi = 0, ready = false;
 const shuffle = a => { for (let i=a.length-1;i>0;i--){
   const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 
-// Track URLs in the manifest are relative to the manifest itself, so the
-// library keeps working if it ever moves to another host.
-const resolve = u => new URL(u, CFG.manifest).href;
+/* ─── votes ───────────────────────────────────────────────────────
+   Thumbs up / down live in localStorage on this device. A thumbs-down
+   skips the track and keeps it out of the shuffle here. The drawer's
+   Export button downloads them as JSON to hand back for a re-curation.
+------------------------------------------------------------------ */
+const VOTES = 'nd.votes';
+const votes = (() => {
+  try { return JSON.parse(localStorage.getItem(VOTES) || '{}') || {}; } catch { return {}; }
+})();
+const saveVotes = () => { try { localStorage.setItem(VOTES, JSON.stringify(votes)); } catch {} };
+const voteOf = t => (t && votes[t.id]?.v) || 0;
+const voteUp = document.getElementById('vote-up');
+const voteDn = document.getElementById('vote-down');
+
+// Track URLs in a manifest are relative to that manifest, so a library
+// keeps working if it ever moves to another host.
+async function loadOne(lib) {
+  const res = await fetch(lib.manifest, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`${lib.name} library returned ${res.status}`);
+  const raw = await res.json();
+  const list = Array.isArray(raw) ? raw : (raw.tracks || []);
+  return list.map(t => {
+    if (typeof t === 'string') {
+      const url = new URL(t, lib.manifest).href;
+      const name = decodeURIComponent(t.split('/').pop().replace(/\.\w+$/, ''));
+      return { id: url, url, title: name, artist: '', library: lib.name };
+    }
+    const url = new URL(t.url || t.src || t.file || t.path, lib.manifest).href;
+    return { ...t, id: t.id || url, url, library: t.library || lib.name };
+  });
+}
 
 async function loadLibrary() {
   try {
-    const res = await fetch(CFG.manifest, { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`manifest returned ${res.status}`);
-
-    const raw = await res.json();
-    const list = Array.isArray(raw) ? raw : (raw.tracks || []);
-    if (!list.length) throw new Error('manifest has no tracks');
-
-    queue = shuffle(list.map(t => {
-      if (typeof t === 'string') {
-        const name = decodeURIComponent(t.split('/').pop().replace(/\.\w+$/, ''));
-        return { url: resolve(t), title: name, artist: '' };
-      }
-      return { ...t, url: resolve(t.url || t.src || t.file || t.path) };
-    }));
+    const got = await Promise.allSettled(CFG.libraries.map(loadOne));
+    const all = got.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    if (!all.length) {
+      const why = got.find(r => r.status === 'rejected');
+      throw new Error(why ? why.reason.message : 'the libraries have no tracks');
+    }
+    // Thumbs-down tracks stay out — unless that would leave nothing to play.
+    const keep = all.filter(t => voteOf(t) >= 0);
+    queue = shuffle(keep.length ? keep : all);
 
     ready = true;
     trackEl.textContent = 'Ready';
@@ -630,7 +680,17 @@ async function loadLibrary() {
 }
 loadLibrary();
 
+let nowT = null;
+function paintVotes() {
+  const v = voteOf(nowT);
+  voteUp.disabled = voteDn.disabled = !nowT;
+  voteUp.setAttribute('aria-pressed', String(v > 0));
+  voteDn.setAttribute('aria-pressed', String(v < 0));
+}
+
 function show(t) {
+  nowT = t;
+  paintVotes();
   trackEl.textContent = t.title || 'Untitled';
   artistEl.textContent = t.artist || 'nightdeck';
   if ('mediaSession' in navigator) {
@@ -690,8 +750,59 @@ au.addEventListener('pause', () => {
   playBtn.setAttribute('aria-label','Play');
   document.body.classList.remove('is-playing');
 });
-au.addEventListener('ended', () => { qi++; cue(qi); au.play().catch(()=>{}); });
-au.addEventListener('error', () => { qi++; cue(qi); au.play().catch(()=>{}); });
+function advance() {
+  // Step past anything voted down since the queue was built.
+  for (let n = 0; n < queue.length; n++) {
+    qi++;
+    if (voteOf(queue[qi % queue.length]) >= 0) break;
+  }
+  cue(qi);
+  au.play().catch(()=>{});
+}
+au.addEventListener('ended', advance);
+au.addEventListener('error', advance);
+
+function vote(v) {
+  const t = nowT;
+  if (!t) return;
+  if (v > 0 && voteOf(t) > 0) {          // second tap on 👍 takes it back
+    delete votes[t.id];
+    toast('Vote removed');
+  } else {
+    votes[t.id] = { v, title: t.title || '', artist: t.artist || '', library: t.library || '', at: new Date().toISOString() };
+    toast(v > 0 ? 'Thumbs up · saved' : 'Thumbs down · skipping');
+  }
+  saveVotes();
+  navigator.vibrate?.(12);
+  paintVotes();
+  redrawVotesFooter();
+  if (v < 0) {
+    if (audioCtx) advance();
+    else { qi++; show(queue[qi % queue.length]); }
+  }
+}
+voteUp.addEventListener('click', () => vote(1));
+voteDn.addEventListener('click', () => vote(-1));
+
+function exportVotes() {
+  const list = Object.entries(votes).map(([id, x]) => ({
+    id, vote: x.v > 0 ? 'up' : 'down', title: x.title, artist: x.artist, library: x.library, at: x.at,
+  }));
+  const data = {
+    app: 'nightdeck', kind: 'track-votes', exported_at: new Date().toISOString(),
+    up: list.filter(x => x.vote === 'up').length,
+    down: list.filter(x => x.vote === 'down').length,
+    votes: list,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `nightdeck-votes-${data.exported_at.slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  toast(`Exported ${list.length} vote${list.length === 1 ? '' : 's'}`);
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    Notes
@@ -807,9 +918,10 @@ async function showTimeline() {
       }
       out.push('</ol>');
     }
-    out.push(vizFooter());
+    out.push(votesFooter(), vizFooter());
 
     host.innerHTML = out.join('');
+    wireVotesFooter();
     wireVizFooter();
     host.scrollTop = 0;
     location.hash = '';
@@ -820,6 +932,48 @@ async function showTimeline() {
       index = null; try { localStorage.removeItem('nd.index'); } catch {}; showTimeline();
     });
   }
+}
+
+/* Track votes: counts, export, and a two-tap reset for after a purge. */
+function votesFooter() {
+  const all = Object.values(votes);
+  const up = all.filter(x => x.v > 0).length, down = all.length - up;
+  return `<div class="nd-viz-footer nd-votes-footer">
+    <span class="nd-viz-footer__label">Track votes</span>
+    <p class="nd-viz-footer__count">${
+      all.length ? `${up} thumbs up · ${down} thumbs down${down ? ' (hidden on this device)' : ''}.`
+                 : 'No votes yet.'
+    }</p>
+    <p class="nd-viz-footer__help">Rate tracks from the bar up top. Export saves a JSON file of your votes to hand back for the next re-curation.</p>
+    <div class="nd-viz-footer__row">
+      <button class="nd-viz-footer__clear" data-export${all.length ? '' : ' disabled'}>Export votes</button>
+      ${all.length ? '<button class="nd-viz-footer__clear" data-clear-votes>Clear votes</button>' : ''}
+    </div>
+  </div>`;
+}
+
+function redrawVotesFooter() {
+  const box = host.querySelector('.nd-votes-footer');
+  if (box) { box.outerHTML = votesFooter(); wireVotesFooter(); }
+}
+
+function wireVotesFooter() {
+  const redraw = redrawVotesFooter;
+  host.querySelector('[data-export]')?.addEventListener('click', exportVotes);
+  const clr = host.querySelector('[data-clear-votes]');
+  clr?.addEventListener('click', () => {
+    if (!clr.hasAttribute('data-armed')) {
+      clr.setAttribute('data-armed', '');
+      clr.textContent = 'Tap again to clear';
+      setTimeout(() => { if (clr.isConnected) { clr.removeAttribute('data-armed'); clr.textContent = 'Clear votes'; } }, 3000);
+      return;
+    }
+    for (const k of Object.keys(votes)) delete votes[k];
+    saveVotes();
+    paintVotes();
+    toast('Votes cleared');
+    redraw();
+  });
 }
 
 /* Visualizer housekeeping, parked at the bottom of the log — the only
