@@ -25,7 +25,8 @@
   --body:"Newsreader",Georgia,serif;
   --mono:"IBM Plex Mono",ui-monospace,monospace;
   --bar:3.5rem;
-  --top:calc(var(--bar) + env(safe-area-inset-top, 0px));
+  --deck:2.25rem;
+  --top:calc(var(--bar) + var(--deck) + env(safe-area-inset-top, 0px));
   --drawer-veil:0.93;
 }
 *{box-sizing:border-box}
@@ -82,9 +83,34 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
 /* ─── transport ──────────────────────────────────────────────────── */
 #transport{position:fixed;top:0;left:0;right:0;z-index:30;height:var(--top);
   padding:0 .875rem;padding-top:env(safe-area-inset-top,0px);
-  display:flex;align-items:center;gap:.875rem;
+  display:flex;flex-direction:column;
   border-bottom:1px solid rgba(230,227,220,.09);background:rgba(20,22,28,.55);
   -webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
+.tp-row{height:var(--bar);display:flex;align-items:center;gap:.875rem}
+
+/* second row: prev · next · time · seek · time · shuffle */
+.tp-deck{height:var(--deck);display:flex;align-items:center;gap:.5rem;padding-bottom:.25rem}
+.tp-mini{flex:0 0 auto;width:1.85rem;height:1.85rem;display:grid;place-items:center;
+  background:none;border:0;border-radius:50%;color:var(--muted);cursor:pointer;
+  transition:color 140ms ease}
+.tp-mini:hover{color:var(--paper)}
+.tp-mini:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+.tp-mini:disabled{opacity:.35;cursor:default}
+.tp-mini svg{width:13px;height:13px;fill:currentColor}
+.tp-mini[aria-pressed="true"]{color:var(--amber)}
+.tp-time{flex:0 0 auto;min-width:2.4rem;font-family:var(--mono);font-size:.625rem;
+  letter-spacing:.06em;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
+.tp-seek{flex:1 1 auto;min-width:0;height:1.5rem;margin:0;background:none;cursor:pointer;
+  -webkit-appearance:none;appearance:none;--p:0%}
+.tp-seek:disabled{cursor:default;opacity:.5}
+.tp-seek::-webkit-slider-runnable-track{height:2px;border-radius:1px;
+  background:linear-gradient(to right,var(--amber) var(--p),var(--line) var(--p))}
+.tp-seek::-moz-range-track{height:2px;border-radius:1px;background:var(--line)}
+.tp-seek::-moz-range-progress{height:2px;background:var(--amber)}
+.tp-seek::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-4.5px;
+  border-radius:50%;background:var(--paper);border:0}
+.tp-seek::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:var(--paper);border:0}
+.tp-seek:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
 .tp-btn{flex:0 0 auto;width:2.25rem;height:2.25rem;display:grid;place-items:center;
   background:none;border:1px solid var(--line);border-radius:50%;color:var(--paper);
@@ -114,7 +140,7 @@ body.is-playing .tp-lamp{background:var(--amber);box-shadow:0 0 0 3px rgba(232,1
 .tp-vote{width:2rem;height:2rem;display:grid;place-items:center;background:none;border:0;
   border-radius:50%;color:var(--muted);cursor:pointer;transition:color 140ms ease,background-color 140ms ease}
 .tp-vote svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
-.tp-vote#vote-down svg{transform:scaleY(-1)}
+.tp-vote.is-down svg{transform:scaleY(-1)}
 .tp-vote:hover{color:var(--paper)}
 .tp-vote:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
 .tp-vote:disabled{opacity:.3;cursor:default}
@@ -142,6 +168,80 @@ body.drawer-open #drawer{transform:translateY(0)}
   color:var(--muted);font-size:1rem;line-height:1;cursor:pointer}
 .dw-close:hover{color:var(--amber)}
 .dw-close:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.dw-scroll[hidden]{display:none}
+
+/* drawer tabs: Tracks · Visuals · Posts */
+.dw-tabs{flex:0 0 auto;display:flex;gap:1.25rem;padding:.9rem 3.25rem 0 1.5rem;
+  border-bottom:1px solid var(--line)}
+.dw-tab{background:none;border:0;border-bottom:2px solid transparent;padding:.35rem 0 .65rem;
+  margin-bottom:-1px;color:var(--muted);font-family:var(--mono);font-size:.6875rem;
+  letter-spacing:.16em;text-transform:uppercase;cursor:pointer;transition:color 140ms,border-color 140ms}
+.dw-tab:hover{color:var(--paper)}
+.dw-tab[aria-selected="true"]{color:var(--amber);border-bottom-color:var(--amber)}
+.dw-tab:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+@media (max-width:30rem){.dw-tabs{padding-left:1.125rem;gap:1rem}}
+
+/* library panes (tracks + visuals share this) */
+.lb{max-width:40rem;margin:0 auto;padding:1.25rem 1.5rem 4rem}
+@media (max-width:30rem){.lb{padding:1rem 1.125rem 3rem}}
+.lb-sec{margin-bottom:1.25rem}
+.lb-label{display:block;font-family:var(--mono);font-size:.5625rem;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.lb-row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.chip{padding:.45rem .7rem;background:none;border:1px solid var(--line);border-radius:999px;
+  color:var(--muted);font-family:var(--mono);font-size:.625rem;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;transition:border-color 140ms,color 140ms,background-color 140ms}
+.chip:hover{color:var(--paper)}
+.chip[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);background:rgba(232,163,61,.08)}
+.chip:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.chip:disabled{opacity:.35;cursor:default}
+.chip .n{opacity:.7;margin-left:.3em}
+.lb-help{margin:.5rem 0 0;font-family:var(--mono);font-size:.625rem;line-height:1.6;color:var(--muted)}
+.lb-search{width:100%;padding:.6rem .75rem;margin-top:.6rem;background:var(--panel);
+  border:1px solid var(--line);border-radius:2px;color:var(--paper);font-family:var(--mono);
+  font-size:.75rem;-webkit-user-select:text;user-select:text}
+.lb-search:focus{outline:none;border-color:var(--amber)}
+.lb-list{list-style:none;margin:.75rem 0 0;padding:0;border-top:1px solid var(--line)}
+.lb-item{display:flex;align-items:center;gap:.25rem;border-bottom:1px solid rgba(42,46,57,.7)}
+.lb-item.is-now{background:rgba(232,163,61,.07)}
+.lb-play{flex:1 1 auto;min-width:0;display:flex;align-items:baseline;gap:.6rem;padding:.7rem .25rem;
+  background:none;border:0;color:inherit;text-align:left;cursor:pointer;font:inherit}
+.lb-play:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+.lb-play:hover .lb-t{color:var(--amber)}
+.lb-dot{flex:0 0 auto;width:5px;height:5px;border-radius:50%;background:transparent;align-self:center}
+.lb-item.is-now .lb-dot{background:var(--amber)}
+.lb-txt{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:.1rem}
+.lb-t{font-family:var(--display);font-variation-settings:"wdth" 102,"wght" 540;font-size:.9375rem;
+  line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color 140ms}
+.lb-a{font-family:var(--mono);font-size:.5625rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-dur{flex:0 0 auto;font-family:var(--mono);font-size:.625rem;color:var(--muted);
+  font-variant-numeric:tabular-nums}
+.lb-item .tp-vote{flex:0 0 auto}
+.lb-empty{padding:1.5rem 0;font-family:var(--mono);font-size:.6875rem;color:var(--muted)}
+.lb-tag{font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--glass);margin-left:.35rem}
+.lb-btn{padding:.6rem 1rem;background:none;border:1px solid var(--line);border-radius:2px;
+  color:var(--muted);font-family:var(--mono);font-size:.625rem;letter-spacing:.14em;
+  text-transform:uppercase;cursor:pointer;transition:border-color 140ms,color 140ms}
+.lb-btn:hover{border-color:var(--amber);color:var(--amber)}
+.lb-btn:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+.lb-btn:disabled{opacity:.4;cursor:default}
+.lb-btn[data-armed]{border-color:#c4584a;color:#e08a7e}
+.lb-btn--hi{border-color:var(--amber);color:var(--amber)}
+.lb-foot{margin-top:2rem;padding-top:1.25rem;border-top:1px dashed var(--line)}
+
+/* visualizer rating bar, bottom of the screen */
+#viz-bar{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom,0px));z-index:15;
+  transform:translateX(-50%);display:flex;align-items:center;gap:.25rem;max-width:calc(100vw - 2rem);
+  padding:.25rem .3rem .25rem .9rem;background:rgba(20,22,28,.62);border:1px solid rgba(230,227,220,.08);
+  border-radius:999px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  transition:opacity 500ms ease}
+#viz-bar[hidden]{display:none}
+#viz-bar.idle{opacity:0;pointer-events:none}
+body.drawer-open #viz-bar{opacity:0;pointer-events:none}
+.vb-name{min-width:0;max-width:52vw;font-family:var(--mono);font-size:.5625rem;letter-spacing:.08em;
+  color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:.25rem}
 
 @media (prefers-reduced-motion:reduce){
   #drawer{transition-duration:.01ms}
@@ -255,30 +355,66 @@ body.drawer-open #drawer{transform:translateY(0)}
 <audio id="au" crossorigin="anonymous" preload="none"></audio>
 
 <header id="transport">
-  <button class="tp-btn" id="play" aria-pressed="false" aria-label="Play">
-    <svg class="icon-play" viewBox="0 0 12 14"><path d="M0 0l12 7-12 7z"/></svg>
-    <svg class="icon-pause" viewBox="0 0 12 14"><path d="M0 0h4v14H0zM8 0h4v14H8z"/></svg>
-  </button>
-  <div class="tp-now">
-    <span class="tp-lamp" aria-hidden="true"></span>
-    <span class="tp-track" id="track">Nothing playing</span>
-    <span class="tp-artist" id="artist">nightdeck</span>
-  </div>
-  <div class="tp-votes" role="group" aria-label="Rate this track">
-    <button class="tp-vote" id="vote-up" aria-pressed="false" aria-label="Thumbs up" disabled>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+  <div class="tp-row">
+    <button class="tp-btn" id="play" aria-pressed="false" aria-label="Play">
+      <svg class="icon-play" viewBox="0 0 12 14"><path d="M0 0l12 7-12 7z"/></svg>
+      <svg class="icon-pause" viewBox="0 0 12 14"><path d="M0 0h4v14H0zM8 0h4v14H8z"/></svg>
     </button>
-    <button class="tp-vote" id="vote-down" aria-pressed="false" aria-label="Thumbs down: skip and hide this track" disabled>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+    <div class="tp-now">
+      <span class="tp-lamp" aria-hidden="true"></span>
+      <span class="tp-track" id="track">Nothing playing</span>
+      <span class="tp-artist" id="artist">nightdeck</span>
+    </div>
+    <div class="tp-votes" role="group" aria-label="Rate this track">
+      <button class="tp-vote" id="vote-up" aria-pressed="false" aria-label="Thumbs up" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+      </button>
+      <button class="tp-vote is-down" id="vote-down" aria-pressed="false" aria-label="Thumbs down" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+      </button>
+    </div>
+    <button class="tp-posts" id="posts-toggle" aria-expanded="false" aria-controls="drawer">Menu</button>
+  </div>
+  <div class="tp-deck">
+    <button class="tp-mini" id="prev" aria-label="Previous track" disabled>
+      <svg viewBox="0 0 14 14"><path d="M1 1h2v12H1zM13 1v12L4 7z"/></svg>
+    </button>
+    <button class="tp-mini" id="next" aria-label="Next track" disabled>
+      <svg viewBox="0 0 14 14"><path d="M11 1h2v12h-2zM1 1v12l9-6z"/></svg>
+    </button>
+    <span class="tp-time" id="t-now">0:00</span>
+    <input class="tp-seek" id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek" disabled>
+    <span class="tp-time" id="t-len">0:00</span>
+    <button class="tp-mini" id="shuffle" aria-pressed="true" aria-label="Shuffle">
+      <svg viewBox="0 0 16 14"><path d="M12 1l3 2.5L12 6V4.3h-1.3c-1.2 0-2 .6-2.9 1.9L6.4 8.3C5.3 10 4.1 10.9 2.3 10.9H1V9.1h1.3c1.2 0 2-.6 2.9-1.9l1.4-2.1C7.7 3.4 8.9 2.5 10.7 2.5H12zM1 2.5h1.3c1.3 0 2.3.5 3.1 1.3l-1 1.5c-.6-.6-1.2-1-2.1-1H1zm11 4.9l3 2.5-3 2.6v-1.8h-1.3c-1.3 0-2.3-.5-3.1-1.3l1-1.5c.6.6 1.2 1 2.1 1H12z"/></svg>
     </button>
   </div>
-  <button class="tp-posts" id="posts-toggle" aria-expanded="false" aria-controls="drawer">Posts</button>
 </header>
 
-<section id="drawer" aria-label="Posts" inert>
-  <button class="dw-close" id="drawer-close" aria-label="Close posts">✕</button>
-  <div class="dw-scroll" id="drawer-content"></div>
+<section id="drawer" aria-label="Menu" inert>
+  <button class="dw-close" id="drawer-close" aria-label="Close menu">✕</button>
+  <nav class="dw-tabs" role="tablist" aria-label="Menu sections">
+    <button class="dw-tab" role="tab" data-tab="tracks" aria-selected="true">Tracks</button>
+    <button class="dw-tab" role="tab" data-tab="visuals" aria-selected="false">Visuals</button>
+    <button class="dw-tab" role="tab" data-tab="posts" aria-selected="false">Posts</button>
+  </nav>
+  <div class="dw-scroll" id="pane-tracks" data-pane="tracks"></div>
+  <div class="dw-scroll" id="pane-visuals" data-pane="visuals" hidden></div>
+  <div class="dw-scroll" id="drawer-content" data-pane="posts" hidden></div>
 </section>
+
+<div id="viz-bar" class="idle" hidden>
+  <span class="vb-name" id="vb-name"></span>
+  <button class="tp-vote" id="vviz-up" aria-pressed="false" aria-label="Thumbs up this visual">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+  </button>
+  <button class="tp-vote is-down" id="vviz-down" aria-pressed="false" aria-label="Thumbs down this visual">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+  </button>
+  <button class="tp-mini" id="vviz-next" aria-label="Next visual">
+    <svg viewBox="0 0 14 14"><path d="M11 1h2v12h-2zM1 1v12l9-6z"/></svg>
+  </button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 
@@ -321,34 +457,81 @@ const CFG = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════
+   Shared helpers
+   ═══════════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const store = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+// Every track and every visual sits in exactly one of these.
+const CATS = ['up', 'none', 'down'];
+const catOf = v => v > 0 ? 'up' : v < 0 ? 'down' : 'none';
+const LABEL = { all: 'All', up: 'Liked', none: 'Unrated', down: 'Disliked', bright: 'Too bright' };
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+const THUMB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>';
+const voteButtons = (v, attr, what) => `
+  <button class="tp-vote" ${attr}="1" aria-pressed="${v > 0}" aria-label="Thumbs up ${esc(what)}">${THUMB}</button>
+  <button class="tp-vote is-down" ${attr}="-1" aria-pressed="${v < 0}" aria-label="Thumbs down ${esc(what)}">${THUMB}</button>`;
+
+function toast(msg) {
+  let el = $('nd-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'nd-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+function download(name, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+// Two taps to do anything destructive.
+function armed(btn, label, fn) {
+  btn?.addEventListener('click', () => {
+    if (!btn.hasAttribute('data-armed')) {
+      btn.setAttribute('data-armed', '');
+      btn.textContent = 'Tap again to confirm';
+      setTimeout(() => { if (btn.isConnected) { btn.removeAttribute('data-armed'); btn.textContent = label; } }, 3000);
+      return;
+    }
+    fn();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    Visualizer
    ═══════════════════════════════════════════════════════════════════ */
 
-const canvas = document.getElementById('viz');
-const fb     = document.getElementById('viz-fallback');
+const canvas = $('viz');
+const fb     = $('viz-fallback');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let audioCtx = null, viz = null, srcNode = null, tap = null, drive = null;
 let rendering = false, cycle = null, fallbackRAF = null;
-let current = '', hot = 0, rollRef = null, settled = 0;
+let current = '', hot = 0, settled = 0;
 
 function webgl2() {
   try { return !!document.createElement('canvas').getContext('webgl2'); }
   catch { return false; }
 }
-
-function sizeRenderer() {
-  if (!viz) return;
-  // Don't touch canvas.width/height here — writing them resets the WebGL
-  // drawing buffer and desyncs Butterchurn's feedback framebuffers.
-  // setRendererSize resizes both together.
-  const dpr = Math.min(devicePixelRatio || 1, 1.75);
-  viz.setRendererSize(
-    Math.round(canvas.clientWidth * dpr),
-    Math.round(canvas.clientHeight * dpr)
-  );
-}
-addEventListener('resize', sizeRenderer);
+const canViz = webgl2() && !reduce;
 
 function presetPool() {
   const all = {};
@@ -356,80 +539,111 @@ function presetPool() {
   if (window.extra?.default) Object.assign(all, window.extra.default);
   return all;
 }
+const presets = presetPool();
+const presetKeys = Object.keys(presets).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+function vizSize() {
+  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  return [Math.max(1, Math.round(canvas.clientWidth * dpr)),
+          Math.max(1, Math.round(canvas.clientHeight * dpr))];
+}
+
+/* Butterchurn draws into its own off-screen WebGL canvas, then copies each
+   frame onto #viz with a 2D drawImage at (0,0). So #viz has to be exactly
+   the render size. Left at the browser default (300×150), you only ever see
+   the top-left corner of the frame stretched across the screen, which is
+   the "zoomed way in" look. */
+function sizeRenderer() {
+  if (!viz) return;
+  const [w, h] = vizSize();
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  viz.setRendererSize(w, h);
+}
+addEventListener('resize', sizeRenderer);
+
+/* ─── visual votes ────────────────────────────────────────────────
+   Separate from track votes. Thumbs down keeps a visual out of rotation
+   (unless you turn Disliked on in Visuals → Show from).
+------------------------------------------------------------------ */
+const vvotes  = store.get('nd.vizvotes', {});
+const vfilter = Object.assign({ up: true, none: true, down: false }, store.get('nd.vfilter', {}));
+let autoCycle = store.get('nd.vcycle', true);
+const vVoteOf = k => vvotes[k]?.v || 0;
+
+// Too-bright presets are dropped automatically, separately from your votes.
+const BANS = 'nd.banned';
+const banned = new Set(store.get(BANS, []));
+const saveBans = () => store.set(BANS, [...banned]);
+
+const vAllowed = k => vfilter[catOf(vVoteOf(k))] && !banned.has(k);
+
+function pickPreset() {
+  let live = presetKeys.filter(k => k !== current && vAllowed(k));
+  if (!live.length) live = presetKeys.filter(vAllowed);
+  if (!live.length) live = presetKeys.filter(k => !banned.has(k) && vVoteOf(k) >= 0);
+  if (!live.length) live = presetKeys.filter(k => !banned.has(k));
+  if (!live.length) { banned.clear(); saveBans(); live = presetKeys; }
+  return live[Math.floor(Math.random() * live.length)];
+}
+
+function restartCycle() {
+  clearInterval(cycle); cycle = null;
+  if (viz && autoCycle) cycle = setInterval(() => roll(CFG.blend), CFG.presetHold);
+}
+
+function showPreset(k, blend = 2.5) {
+  if (!k || !presets[k]) return;
+  current = k;
+  paintVizBar();
+  markNowVisual();
+  if (!viz) return;                 // remembered; loads once playback starts
+  hot = 0;
+  settled = performance.now() + CFG.settle;
+  viz.loadPreset(presets[k], blend);
+  restartCycle();
+  wakeBar();
+}
+const roll = blend => showPreset(pickPreset(), blend);
 
 function startVisualizer() {
-  if (viz || !webgl2() || reduce) return false;
+  if (viz || !canViz || !presetKeys.length) return false;
 
-  const presets = presetPool();
-  const keys = Object.keys(presets);
-  if (!keys.length) return false;
-
-  const dpr = Math.min(devicePixelRatio || 1, 1.75);
+  const [w, h] = vizSize();
+  canvas.width = w; canvas.height = h;
   viz = butterchurn.createVisualizer(audioCtx, canvas, {
-    width:  Math.round(canvas.clientWidth * dpr),
-    height: Math.round(canvas.clientHeight * dpr),
-    pixelRatio: 1,      // we've already baked dpr into width/height
+    width: w, height: h,
+    pixelRatio: 1,      // dpr is already baked into width/height
     textureRatio: 1
   });
 
-  // Butterchurn runs ~0.26s behind the audio it analyses, so the demo
-  // delays the *audible* path to match. Without this the visuals lag
-  // the music by a noticeable beat.
+  // Butterchurn runs ~0.26s behind the audio it analyses, so delay the
+  // audible path to match.
   tap = audioCtx.createDelay();
   tap.delayTime.value = 0.26;
   tap.connect(audioCtx.destination);
 
-  // The visualizer gets a quieter copy. This is the real white-out fix:
-  // Milkdrop drives brightness and displacement from amplitude, so
-  // attenuating here calms the visuals without touching what you hear.
+  // The visualizer hears a quieter copy: calmer visuals, same sound.
   drive = audioCtx.createGain();
   drive.gain.value = CFG.drive;
   tap.connect(drive);
   viz.connectAudio(drive);
 
-  const roll = (blend) => {
-    const live = keys.filter(k => !banned.has(k));
-    // Everything banned? Start over rather than show nothing.
-    if (!live.length) { banned.clear(); saveBans(); return roll(blend); }
-    const k = live[Math.floor(Math.random() * live.length)];
-    current = k;
-    hot = 0;
-    settled = performance.now() + CFG.settle;
-    viz.loadPreset(presets[k], blend);
-  };
-  roll(0);
-  rollRef = roll;
-  cycle = setInterval(() => roll(CFG.blend), CFG.presetHold);
+  showPreset(current && presets[current] ? current : pickPreset(), 0);
 
   cancelAnimationFrame(fallbackRAF);
   fb.hidden = true;
+  $('viz-bar').hidden = false;
   rendering = true;
-  runLoop(roll);
-
+  runLoop();
   return true;
 }
 
 /* ─── brightness governor ─────────────────────────────────────────
-   Some presets bloom to white regardless of how little signal they get.
-   Sample the canvas down to 8×8, read average luminance, and if a preset
-   sits over the ceiling twice running, ban it — permanently, in
-   localStorage, so it never comes back.
-
-   The sample has to happen in the same frame as render(), before the
-   WebGL buffer is cleared: Butterchurn doesn't set preserveDrawingBuffer,
-   so a read at any other time comes back blank.
+   Sample the frame down to 8×8; if a preset sits over the ceiling twice
+   running, drop it for good. A visual you've liked is never dropped.
 ------------------------------------------------------------------ */
-
-const BANS = 'nd.banned';
-const banned = new Set((() => {
-  try { return JSON.parse(localStorage.getItem(BANS) || '[]'); } catch { return []; }
-})());
-const saveBans = () => {
-  try { localStorage.setItem(BANS, JSON.stringify([...banned])); } catch {}
-};
-
-const probe  = Object.assign(document.createElement('canvas'), { width: 8, height: 8 });
-const pctx   = probe.getContext('2d', { willReadFrequently: true });
+const probe = Object.assign(document.createElement('canvas'), { width: 8, height: 8 });
+const pctx  = probe.getContext('2d', { willReadFrequently: true });
 
 function brightness() {
   try {
@@ -442,134 +656,112 @@ function brightness() {
   } catch { return 0; }
 }
 
-function ban(key, why) {
-  if (!key || banned.has(key)) return;
-  banned.add(key);
-  saveBans();
-  console.info(`nightdeck: banned (${why}) — ${key}`);
-}
-
-function runLoop(roll) {
+function runLoop() {
   let last = 0, checked = 0;
   (function loop(now) {
     if (!rendering) return;
     requestAnimationFrame(loop);
 
-    // half rate while the drawer covers it — saves battery, still alive underneath
+    // half rate while the drawer covers it
     const gap = document.body.classList.contains('drawer-open') ? 42 : 0;
     if (now - last < gap) return;
     last = now;
 
     viz.render();
 
-    // Ignore the crossfade — a blend between two presets reads bright
-    // for a moment even when neither one is.
     if (now < settled || now - checked < CFG.checkEvery) return;
     checked = now;
 
-    // brightness() reads the raw canvas, so scale by the CSS filter
-    // sitting on top of it before comparing.
-    if (brightness() * 0.72 > CFG.maxBrightness) {
-      if (++hot >= 2) { ban(current, 'too bright'); toast('Preset dropped'); roll(2.5); }
+    if (brightness() * 0.72 > CFG.maxBrightness && vVoteOf(current) <= 0) {
+      if (++hot >= 2) {
+        banned.add(current); saveBans();
+        console.info('nightdeck: too bright —', current);
+        toast('Too bright · dropped');
+        roll(2.5);
+        refreshVisuals();
+      }
     } else hot = 0;
   })(0);
 }
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { rendering = false; }
-  else if (viz && !rendering) { rendering = true; runLoop(rollRef); }
+  else if (viz && !rendering) { rendering = true; runLoop(); }
 });
 
-/* ─── manual control ──────────────────────────────────────────────
-   Double-tap the visualizer for the next preset.
-   Press and hold to ban the current one for good.
-   Keyboard: → next, X ban.
+/* ─── visual rating bar + gestures ────────────────────────────────
+   Tap the visualizer to bring up its bar: name, 👍, 👎, next.
+   Double-tap: next visual. Press and hold: thumbs down.
+   Keyboard: → next visual, X thumbs down.
 ------------------------------------------------------------------ */
+const vbar = $('viz-bar');
+function paintVizBar() {
+  $('vb-name').textContent = current || '';
+  const v = vVoteOf(current);
+  $('vviz-up').setAttribute('aria-pressed', String(v > 0));
+  $('vviz-down').setAttribute('aria-pressed', String(v < 0));
+}
+function wakeBar() {
+  if (vbar.hidden) return;
+  vbar.classList.remove('idle');
+  clearTimeout(wakeBar._t);
+  wakeBar._t = setTimeout(() => vbar.classList.add('idle'), 4500);
+}
 
-function toast(msg) {
-  let el = document.getElementById('nd-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'nd-toast';
-    document.body.appendChild(el);
+function vizVote(k, v) {
+  if (!k) return;
+  if (vVoteOf(k) === v) { delete vvotes[k]; toast('Visual vote removed'); }
+  else {
+    vvotes[k] = { v, at: new Date().toISOString() };
+    toast(v > 0 ? 'Visual · thumbs up' : 'Visual · thumbs down');
   }
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => el.classList.remove('show'), 1600);
+  store.set('nd.vizvotes', vvotes);
+  navigator.vibrate?.(12);
+  paintVizBar();
+  if (k === current && v < 0 && vVoteOf(k) < 0 && !vfilter.down) roll(2.5);
+  refreshVisuals();
 }
 
-function nextPreset() { if (rollRef) { rollRef(2.5); toast('Next preset'); } }
-function banCurrent() {
-  if (!rollRef || !current) return;
-  ban(current, 'by hand');
-  // Android supports vibrate, so the hold gesture confirms itself
-  // without you having to look away from the visualizer.
-  navigator.vibrate?.(18);
-  toast('Banned · ' + banned.size + ' total');
-  rollRef(2.5);
-}
+$('vviz-up').addEventListener('click', () => { vizVote(current, 1); wakeBar(); });
+$('vviz-down').addEventListener('click', () => { vizVote(current, -1); wakeBar(); });
+$('vviz-next').addEventListener('click', () => { roll(2.5); });
 
-// Only respond on the visualizer itself, never through the UI.
-const onViz = e => !e.target.closest('#transport, #drawer');
-
-/* Double-tap is detected by hand rather than with the dblclick event:
-   iOS fires dblclick inconsistently, and the browser's own
-   double-tap-to-zoom would swallow it first (see touch-action above). */
+const onViz = e => !e.target.closest('#transport, #drawer, #viz-bar');
 let held = null, lastTap = 0, lastX = 0, lastY = 0;
 
 document.addEventListener('pointerdown', e => {
   if (!viz || !onViz(e)) return;
-
+  wakeBar();
   const now = performance.now();
   const near = Math.hypot(e.clientX - lastX, e.clientY - lastY) < 32;
-
   if (now - lastTap < 320 && near) {
-    // second tap — this is the gesture
     if (held) { clearTimeout(held); held = null; }
     lastTap = 0;
-    nextPreset();
+    roll(2.5); toast('Next visual');
     return;
   }
-
   lastTap = now; lastX = e.clientX; lastY = e.clientY;
-  held = setTimeout(() => { held = null; lastTap = 0; banCurrent(); }, 650);
+  held = setTimeout(() => { held = null; lastTap = 0; vizVote(current, -1); }, 650);
 });
-
 const release = () => { if (held) { clearTimeout(held); held = null; } };
 document.addEventListener('pointerup', release);
 document.addEventListener('pointercancel', release);
 document.addEventListener('pointermove', e => {
-  // a real drag cancels the hold; a shaky finger shouldn't
-  if (held && (e.movementX || e.movementY) &&
-      Math.hypot(e.clientX - lastX, e.clientY - lastY) > 12) release();
+  if (viz && e.pointerType === 'mouse' && onViz(e)) wakeBar();
+  if (held && Math.hypot(e.clientX - lastX, e.clientY - lastY) > 12) release();
 });
-
-// Android Chrome raises a context menu on long-press, which would
-// interrupt the ban gesture. (-webkit-touch-callout is iOS-only.)
-document.addEventListener('contextmenu', e => {
-  if (viz && onViz(e)) e.preventDefault();
-});
+document.addEventListener('contextmenu', e => { if (viz && onViz(e)) e.preventDefault(); });
 
 document.addEventListener('keydown', e => {
-  if (!viz || e.target.closest('input, textarea')) return;
-  if (e.key === 'ArrowRight') nextPreset();
-  if (e.key === 'x' || e.key === 'X') banCurrent();
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); togglePlay(); }
+  if (!viz) return;
+  if (e.key === 'ArrowRight') { roll(2.5); toast('Next visual'); }
+  if (e.key === 'x' || e.key === 'X') vizVote(current, -1);
 });
 
-// For fixing things from the console later.
-window.NIGHTDECK = {
-  get preset() { return current; },
-  get banned() { return [...banned]; },
-  next: nextPreset,
-  ban: banCurrent,
-  unbanAll() { banned.clear(); saveBans(); toast('Ban list cleared'); }
-};
-
-/* Fallback: no WebGL2, or reduced motion. Soft drifting smoke.
-   It gets its own canvas — a canvas is permanently bound to the first
-   context type requested, so taking a 2D context on #viz would make
-   getContext('webgl2') return null there forever. */
+/* Fallback: no WebGL2, or reduced motion. Soft drifting smoke on its own
+   canvas (a canvas is bound to the first context type it's asked for). */
 (function fallback() {
   if (viz) return;
   const ctx = fb.getContext('2d');
@@ -589,7 +781,7 @@ window.NIGHTDECK = {
   if (reduce) { ctx.fillStyle = '#14161c'; ctx.fillRect(0,0,W,H); return; }
 
   (function draw(now) {
-    if (viz) return;                       // butterchurn took over
+    if (viz) return;
     fallbackRAF = requestAnimationFrame(draw);
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#14161c'; ctx.fillRect(0,0,W,H);
@@ -613,32 +805,53 @@ window.NIGHTDECK = {
    Audio
    ═══════════════════════════════════════════════════════════════════ */
 
-const au      = document.getElementById('au');
-const playBtn = document.getElementById('play');
-const trackEl = document.getElementById('track');
-const artistEl= document.getElementById('artist');
+const au       = $('au');
+const playBtn  = $('play');
+const trackEl  = $('track');
+const artistEl = $('artist');
+const voteUp   = $('vote-up');
+const voteDn   = $('vote-down');
+const prevBtn  = $('prev');
+const nextBtn  = $('next');
+const seek     = $('seek');
+const shufBtn  = $('shuffle');
 
-let queue = [], qi = 0, ready = false;
+let allTracks = [], byId = new Map();
+let queue = [], qi = 0, ready = false, nowT = null;
+const hist = [];
+
+/* ─── track votes + play filter ───────────────────────────────────
+   Votes live in localStorage on this device. The play filter decides
+   which groups the station draws from; tapping a track in a list plays
+   it regardless, then the station carries on from the filter.
+------------------------------------------------------------------ */
+const votes   = store.get('nd.votes', {});
+const tfilter = Object.assign({ up: true, none: true, down: false }, store.get('nd.filter', {}));
+let shuffleOn = store.get('nd.shuffle', true);
+const voteOf   = t => (t && votes[t.id]?.v) || 0;
+const tAllowed = t => tfilter[catOf(voteOf(t))];
 
 const shuffle = a => { for (let i=a.length-1;i>0;i--){
   const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const byName = (a, b) =>
+  (a.artist || '').localeCompare(b.artist || '', undefined, { sensitivity: 'base' }) ||
+  (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
 
-/* ─── votes ───────────────────────────────────────────────────────
-   Thumbs up / down live in localStorage on this device. A thumbs-down
-   skips the track and keeps it out of the shuffle here. The drawer's
-   Export button downloads them as JSON to hand back for a re-curation.
------------------------------------------------------------------- */
-const VOTES = 'nd.votes';
-const votes = (() => {
-  try { return JSON.parse(localStorage.getItem(VOTES) || '{}') || {}; } catch { return {}; }
-})();
-const saveVotes = () => { try { localStorage.setItem(VOTES, JSON.stringify(votes)); } catch {} };
-const voteOf = t => (t && votes[t.id]?.v) || 0;
-const voteUp = document.getElementById('vote-up');
-const voteDn = document.getElementById('vote-down');
+function rebuildQueue(front) {
+  const pool = allTracks.filter(tAllowed);
+  if (shuffleOn) {
+    queue = shuffle(pool.filter(t => t !== front));
+    if (front) queue.unshift(front);
+  } else {
+    const sorted = pool.sort(byName);
+    const i = front ? sorted.indexOf(front) : -1;
+    queue = i >= 0 ? sorted.slice(i).concat(sorted.slice(0, i))
+          : front ? [front, ...sorted] : sorted;
+  }
+  qi = 0;
+}
 
-// Track URLs in a manifest are relative to that manifest, so a library
-// keeps working if it ever moves to another host.
+// Track URLs in a manifest are relative to that manifest.
 async function loadOne(lib) {
   const res = await fetch(lib.manifest, { cache: 'no-cache' });
   if (!res.ok) throw new Error(`${lib.name} library returned ${res.status}`);
@@ -658,29 +871,26 @@ async function loadOne(lib) {
 async function loadLibrary() {
   try {
     const got = await Promise.allSettled(CFG.libraries.map(loadOne));
-    const all = got.flatMap(r => r.status === 'fulfilled' ? r.value : []);
-    if (!all.length) {
+    allTracks = got.flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    if (!allTracks.length) {
       const why = got.find(r => r.status === 'rejected');
       throw new Error(why ? why.reason.message : 'the libraries have no tracks');
     }
-    // Thumbs-down tracks stay out — unless that would leave nothing to play.
-    const keep = all.filter(t => voteOf(t) >= 0);
-    queue = shuffle(keep.length ? keep : all);
-
+    byId = new Map(allTracks.map(t => [t.id, t]));
+    rebuildQueue();
     ready = true;
+    prevBtn.disabled = nextBtn.disabled = false;
     trackEl.textContent = 'Ready';
-    artistEl.textContent = `${queue.length} tracks`;
+    artistEl.textContent = `${queue.length} of ${allTracks.length} tracks`;
   } catch (e) {
     console.error('library:', e);
-    // Say what actually broke — the console isn't reachable on a phone.
-    trackEl.textContent = e.message;
+    trackEl.textContent = e.message;       // the console isn't reachable on a phone
     artistEl.textContent = 'library';
     playBtn.disabled = true;
   }
+  renderTracks();
 }
-loadLibrary();
 
-let nowT = null;
 function paintVotes() {
   const v = voteOf(nowT);
   voteUp.disabled = voteDn.disabled = !nowT;
@@ -698,111 +908,484 @@ function show(t) {
       title: t.title || 'Untitled', artist: t.artist || 'NIGHTDECK', album: 'NIGHTDECK'
     });
   }
+  markNowTrack();
 }
 
-// A second, silent audio element warms the next track into the HTTP cache.
-// (An Image() won't do this — the browser rejects the decode and gives up.)
+// A second, silent element warms the next track into the HTTP cache.
 const pre = new Audio();
 pre.crossOrigin = 'anonymous';
 pre.preload = 'auto';
 pre.muted = true;
 
-function cue(i) {
-  const t = queue[i % queue.length];
+function cueTrack(t, record = true) {
   au.src = t.url;
   show(t);
-
-  const next = queue[(i + 1) % queue.length];
+  setTime(0, t.seconds || 0);
+  seek.disabled = false;
+  if (record && hist[hist.length - 1] !== t) { hist.push(t); if (hist.length > 200) hist.shift(); }
+  const next = queue[qi + 1];
   if (next && next.url !== t.url) { pre.src = next.url; pre.load(); }
 }
 
-async function start() {
-  if (!audioCtx) {
-    // Must be created inside the tap — mobile browsers refuse otherwise.
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    srcNode = audioCtx.createMediaElementSource(au);
-    if (!startVisualizer()) srcNode.connect(audioCtx.destination);
-    else srcNode.connect(tap);   // tap already goes to destination
-    cue(qi);
-  }
-  await audioCtx.resume();
-  await au.play();
+function ensureAudio() {
+  if (audioCtx) return;
+  // Must be created inside a tap; mobile browsers refuse otherwise.
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  srcNode = audioCtx.createMediaElementSource(au);
+  if (startVisualizer()) srcNode.connect(tap);   // tap already goes to destination
+  else srcNode.connect(audioCtx.destination);
 }
 
-playBtn.addEventListener('click', async () => {
-  if (!ready) return;
+async function playNow() {
   try {
-    if (au.paused) { await start(); }
-    else { au.pause(); }
+    ensureAudio();
+    await audioCtx.resume();
+    await au.play();
   } catch (e) {
     console.error('playback:', e);
     trackEl.textContent = "That track wouldn't play";
   }
+}
+
+async function togglePlay() {
+  if (!ready) return;
+  if (!au.getAttribute('src')) {
+    if (!queue.length) rebuildQueue();
+    if (!queue.length) { toast('Nothing matches the play filter'); return; }
+    qi = 0; cueTrack(queue[0]);
+  }
+  if (au.paused) await playNow(); else au.pause();
+}
+playBtn.addEventListener('click', togglePlay);
+
+function nextTrack() {
+  if (!ready) return;
+  let guard = queue.length + 2;
+  do {
+    qi++;
+    if (qi >= queue.length) {               // end of the run: reshuffle and go again
+      const last = nowT;
+      rebuildQueue();
+      if (queue.length > 1 && queue[0] === last) qi = 1;
+    }
+  } while (queue.length && !tAllowed(queue[qi]) && --guard > 0);
+  const t = queue[qi];
+  if (!t || !tAllowed(t)) { toast('Nothing matches the play filter'); return; }
+  cueTrack(t);
+  if (audioCtx) playNow();
+}
+
+function prevTrack() {
+  if (!ready) return;
+  if (au.currentTime > 3 || hist.length < 2) { au.currentTime = 0; return; }
+  hist.pop();
+  const t = hist[hist.length - 1];
+  const i = queue.indexOf(t);
+  if (i >= 0) qi = i; else queue.splice(qi, 0, t);
+  cueTrack(t, false);
+  if (audioCtx) playNow();
+}
+
+// Play this track now, then carry on with the filter.
+function playTrack(t) {
+  if (!t) return;
+  rebuildQueue(t);
+  cueTrack(t);
+  playNow();
+}
+
+nextBtn.addEventListener('click', nextTrack);
+prevBtn.addEventListener('click', prevTrack);
+
+function paintShuffle() {
+  shufBtn.setAttribute('aria-pressed', String(shuffleOn));
+  shufBtn.setAttribute('aria-label', shuffleOn ? 'Shuffle on' : 'Shuffle off (A to Z by artist)');
+}
+shufBtn.addEventListener('click', () => {
+  shuffleOn = !shuffleOn;
+  store.set('nd.shuffle', shuffleOn);
+  rebuildQueue(nowT);
+  paintShuffle();
+  toast(shuffleOn ? 'Shuffle on' : 'Shuffle off · A to Z by artist');
 });
+paintShuffle();
 
 au.addEventListener('play',  () => {
   playBtn.setAttribute('aria-pressed','true');
   playBtn.setAttribute('aria-label','Pause');
   document.body.classList.add('is-playing');
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
 });
 au.addEventListener('pause', () => {
   playBtn.setAttribute('aria-pressed','false');
   playBtn.setAttribute('aria-label','Play');
   document.body.classList.remove('is-playing');
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
 });
-function advance() {
-  // Step past anything voted down since the queue was built.
-  for (let n = 0; n < queue.length; n++) {
-    qi++;
-    if (voteOf(queue[qi % queue.length]) >= 0) break;
-  }
-  cue(qi);
-  au.play().catch(()=>{});
-}
-au.addEventListener('ended', advance);
-au.addEventListener('error', advance);
 
-function vote(v) {
-  const t = nowT;
+let errors = 0;
+au.addEventListener('ended', () => { errors = 0; nextTrack(); });
+au.addEventListener('playing', () => { errors = 0; });
+au.addEventListener('error', () => {
+  if (!au.getAttribute('src')) return;
+  if (++errors > 5) { trackEl.textContent = 'Tracks are failing to load'; return; }
+  nextTrack();
+});
+
+/* ─── seek bar ───────────────────────────────────────────────────── */
+const clock = s => {
+  s = Math.max(0, Math.floor(s || 0));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+let dragging = false;
+function setTime(now, len) {
+  $('t-now').textContent = clock(now);
+  $('t-len').textContent = clock(len);
+  const p = len ? Math.min(1, now / len) : 0;
+  if (!dragging) seek.value = Math.round(p * 1000);
+  seek.style.setProperty('--p', (p * 100).toFixed(2) + '%');
+}
+const duration = () => (isFinite(au.duration) && au.duration) || nowT?.seconds || 0;
+au.addEventListener('timeupdate', () => {
+  setTime(au.currentTime, duration());
+  if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && duration()) {
+    try { navigator.mediaSession.setPositionState({ duration: duration(), position: Math.min(au.currentTime, duration()), playbackRate: 1 }); } catch {}
+  }
+});
+au.addEventListener('loadedmetadata', () => setTime(au.currentTime, duration()));
+seek.addEventListener('input', () => {
+  dragging = true;
+  const len = duration();
+  $('t-now').textContent = clock(seek.value / 1000 * len);
+  seek.style.setProperty('--p', (seek.value / 10) + '%');
+});
+seek.addEventListener('change', () => {
+  dragging = false;
+  const len = duration();
+  if (len) au.currentTime = seek.value / 1000 * len;
+});
+
+/* ─── lock screen / headset / media keys ─────────────────────────── */
+if ('mediaSession' in navigator) {
+  const ms = navigator.mediaSession;
+  const on = (a, f) => { try { ms.setActionHandler(a, f); } catch {} };
+  on('play', () => togglePlay());
+  on('pause', () => au.pause());
+  on('nexttrack', nextTrack);
+  on('previoustrack', prevTrack);
+  on('seekto', d => { if (d.seekTime != null) au.currentTime = d.seekTime; });
+  on('seekbackward', d => { au.currentTime = Math.max(0, au.currentTime - (d.seekOffset || 10)); });
+  on('seekforward', d => { au.currentTime = Math.min(duration(), au.currentTime + (d.seekOffset || 10)); });
+}
+
+/* ─── voting ─────────────────────────────────────────────────────── */
+function vote(t, v) {
   if (!t) return;
-  if (v > 0 && voteOf(t) > 0) {          // second tap on 👍 takes it back
+  if (voteOf(t) === v) {                  // the same thumb again takes it back
     delete votes[t.id];
     toast('Vote removed');
   } else {
     votes[t.id] = { v, title: t.title || '', artist: t.artist || '', library: t.library || '', at: new Date().toISOString() };
-    toast(v > 0 ? 'Thumbs up · saved' : 'Thumbs down · skipping');
+    const skip = v < 0 && t === nowT && !tfilter.down;
+    toast(v > 0 ? 'Thumbs up · saved' : skip ? 'Thumbs down · skipping' : 'Thumbs down · saved');
   }
-  saveVotes();
+  store.set('nd.votes', votes);
   navigator.vibrate?.(12);
-  paintVotes();
-  redrawVotesFooter();
-  if (v < 0) {
-    if (audioCtx) advance();
-    else { qi++; show(queue[qi % queue.length]); }
-  }
+  if (t === nowT) paintVotes();
+  refreshTracks();
+  if (t === nowT && voteOf(t) < 0 && !tfilter.down && au.getAttribute('src')) nextTrack();
 }
-voteUp.addEventListener('click', () => vote(1));
-voteDn.addEventListener('click', () => vote(-1));
+voteUp.addEventListener('click', () => vote(nowT, 1));
+voteDn.addEventListener('click', () => vote(nowT, -1));
 
-function exportVotes() {
-  const list = Object.entries(votes).map(([id, x]) => ({
-    id, vote: x.v > 0 ? 'up' : 'down', title: x.title, artist: x.artist, library: x.library, at: x.at,
-  }));
+/* ═══════════════════════════════════════════════════════════════════
+   Export: one file with every track and every visual, grouped
+   up / down / unrated, for re-curation.
+   ═══════════════════════════════════════════════════════════════════ */
+
+function exportAll() {
+  const T = { up: [], down: [], unrated: [] };
+  for (const t of allTracks) {
+    const v = voteOf(t);
+    const e = { id: t.id, title: t.title || '', artist: t.artist || '', library: t.library || '',
+                license: t.license || '', page: t.page || '', seconds: t.seconds ?? null };
+    if (v) e.voted_at = votes[t.id].at;
+    T[v > 0 ? 'up' : v < 0 ? 'down' : 'unrated'].push(e);
+  }
+  // votes for tracks that have since left the library
+  for (const [id, x] of Object.entries(votes)) if (!byId.has(id))
+    T[x.v > 0 ? 'up' : 'down'].push({ id, title: x.title, artist: x.artist, library: x.library, voted_at: x.at, in_library: false });
+
+  const V = { up: [], down: [], unrated: [], too_bright: [...banned].sort() };
+  for (const k of presetKeys) {
+    const v = vVoteOf(k);
+    if (v) V[v > 0 ? 'up' : 'down'].push({ preset: k, voted_at: vvotes[k].at });
+    else V.unrated.push(k);
+  }
+  for (const [k, x] of Object.entries(vvotes)) if (!presets[k])
+    V[x.v > 0 ? 'up' : 'down'].push({ preset: k, voted_at: x.at, in_pool: false });
+
+  const name = c => c === 'none' ? 'unrated' : c;
+  const exported_at = new Date().toISOString();
   const data = {
-    app: 'nightdeck', kind: 'track-votes', exported_at: new Date().toISOString(),
-    up: list.filter(x => x.vote === 'up').length,
-    down: list.filter(x => x.vote === 'down').length,
-    votes: list,
+    app: 'nightdeck', kind: 'curation', version: 2, exported_at,
+    tracks: { counts: { total: allTracks.length, up: T.up.length, down: T.down.length, unrated: T.unrated.length }, ...T },
+    visuals: { counts: { total: presetKeys.length, up: V.up.length, down: V.down.length, unrated: V.unrated.length, too_bright: V.too_bright.length }, ...V },
+    settings: {
+      play_filter: CATS.filter(c => tfilter[c]).map(name),
+      visual_filter: CATS.filter(c => vfilter[c]).map(name),
+      shuffle: shuffleOn, auto_cycle: autoCycle
+    }
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `nightdeck-votes-${data.exported_at.slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-  toast(`Exported ${list.length} vote${list.length === 1 ? '' : 's'}`);
+  download(`nightdeck-curation-${exported_at.slice(0, 10)}.json`, data);
+  toast(`Exported ${plural(allTracks.length, 'track')} · ${plural(presetKeys.length, 'visual')}`);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Menu panes: Tracks and Visuals
+   ═══════════════════════════════════════════════════════════════════ */
+
+const paneT = $('pane-tracks');
+const paneV = $('pane-visuals');
+
+function countBy(keys, voteFn) {
+  const c = { all: keys.length, up: 0, none: 0, down: 0 };
+  for (const k of keys) c[catOf(voteFn(k))]++;
+  return c;
+}
+const chips = (keys, attr, isOn, c) => keys.map(k =>
+  `<button class="chip" ${attr}="${k}" aria-pressed="${isOn(k)}">${LABEL[k]}<span class="n">${c[k] ?? ''}</span></button>`).join('');
+
+// Re-render a pane without losing your place in it.
+function keepScroll(pane, fn) {
+  const y = pane.scrollTop;
+  const focused = document.activeElement?.matches?.('[data-search]') && pane.contains(document.activeElement);
+  fn();
+  pane.scrollTop = y;
+  if (focused) { const s = pane.querySelector('[data-search]'); s.focus(); s.setSelectionRange(s.value.length, s.value.length); }
+}
+
+/* ─── Tracks ─────────────────────────────────────────────────────── */
+let tView = store.get('nd.tview', 'all'), tQuery = '';
+
+function renderTracks() {
+  if (!ready) {
+    paneT.innerHTML = `<p class="nd-msg">${esc(trackEl.textContent === 'Nothing playing' ? 'Loading the library…' : trackEl.textContent)}</p>`;
+    return;
+  }
+  const c = countBy(allTracks, voteOf);
+  const playing = allTracks.filter(tAllowed).length;
+  const listName = tView === 'all' ? 'everything' : LABEL[tView].toLowerCase();
+  paneT.innerHTML = `<div class="lb">
+    <div class="lb-sec">
+      <span class="lb-label">Play from</span>
+      <div class="lb-row">${chips(CATS, 'data-tf', k => tfilter[k], c)}</div>
+      <p class="lb-help">The station plays ${plural(playing, 'track')} from the groups you turn on. Tap any track below to play it anyway.</p>
+    </div>
+    <div class="lb-sec">
+      <span class="lb-label">Browse</span>
+      <div class="lb-row">${chips(['all', ...CATS], 'data-tv', k => tView === k, c)}</div>
+      <input class="lb-search" type="search" placeholder="Search title or artist" value="${esc(tQuery)}" data-search>
+      <div class="lb-row" style="margin-top:.6rem">
+        <button class="lb-btn" data-tplay ${c[tView] ? '' : 'disabled'}>Play ${tView === 'all' ? 'everything' : listName + ' only'}</button>
+      </div>
+      <ol class="lb-list" data-list></ol>
+    </div>
+    <div class="lb-foot">
+      <span class="lb-label">Export</span>
+      <p class="lb-help">One JSON file with every track and every visual, grouped liked / disliked / unrated. Upload it to Claude to re-curate the library.</p>
+      <div class="lb-row" style="margin-top:.75rem">
+        <button class="lb-btn lb-btn--hi" data-export>Export JSON</button>
+        ${Object.keys(votes).length ? '<button class="lb-btn" data-clear>Clear track votes</button>' : ''}
+      </div>
+    </div>
+  </div>`;
+  fillTracks();
+  armed(paneT.querySelector('[data-clear]'), 'Clear track votes', () => {
+    for (const k of Object.keys(votes)) delete votes[k];
+    store.set('nd.votes', votes); paintVotes(); toast('Track votes cleared'); refreshTracks();
+  });
+}
+
+function fillTracks() {
+  const ol = paneT.querySelector('[data-list]');
+  if (!ol) return;
+  const q = tQuery.trim().toLowerCase();
+  const list = allTracks
+    .filter(t => (tView === 'all' || catOf(voteOf(t)) === tView) &&
+                 (!q || `${t.title} ${t.artist}`.toLowerCase().includes(q)))
+    .sort(byName);
+  ol.innerHTML = list.length ? list.map(t => `
+    <li class="lb-item${t === nowT ? ' is-now' : ''}" data-id="${esc(t.id)}">
+      <button class="lb-play" data-play>
+        <span class="lb-dot" aria-hidden="true"></span>
+        <span class="lb-txt"><span class="lb-t">${esc(t.title || 'Untitled')}</span>
+          <span class="lb-a">${esc(t.artist || '')}<span class="lb-tag">${esc(t.library || '')}</span></span></span>
+        <span class="lb-dur">${t.seconds ? clock(t.seconds) : ''}</span>
+      </button>
+      ${voteButtons(voteOf(t), 'data-tvote', t.title)}
+    </li>`).join('')
+    : `<li class="lb-empty">${q ? 'No matches.' : `No ${LABEL[tView].toLowerCase()} tracks yet.`}</li>`;
+}
+
+const refreshTracks = () => keepScroll(paneT, renderTracks);
+function markNowTrack() {
+  paneT.querySelectorAll('.lb-item.is-now').forEach(li => li.classList.remove('is-now'));
+  if (nowT) paneT.querySelector(`.lb-item[data-id="${CSS.escape(nowT.id)}"]`)?.classList.add('is-now');
+}
+
+paneT.addEventListener('click', e => {
+  const tf = e.target.closest('[data-tf]');
+  if (tf) {
+    const k = tf.dataset.tf;
+    if (tfilter[k] && CATS.filter(c => tfilter[c]).length === 1) { toast('Keep at least one group on'); return; }
+    tfilter[k] = !tfilter[k];
+    store.set('nd.filter', tfilter);
+    rebuildQueue(nowT);
+    refreshTracks();
+    return;
+  }
+  const tv = e.target.closest('[data-tv]');
+  if (tv) { tView = tv.dataset.tv; store.set('nd.tview', tView); refreshTracks(); return; }
+  if (e.target.closest('[data-tplay]')) {
+    for (const c of CATS) tfilter[c] = tView === 'all' || c === tView;
+    store.set('nd.filter', tfilter);
+    rebuildQueue();
+    if (!queue.length) return;
+    qi = 0; cueTrack(queue[0]); playNow();
+    refreshTracks();
+    toast(tView === 'all' ? 'Playing everything' : `Playing ${LABEL[tView].toLowerCase()} only`);
+    return;
+  }
+  if (e.target.closest('[data-export]')) { exportAll(); return; }
+  const li = e.target.closest('.lb-item');
+  if (!li) return;
+  const t = byId.get(li.dataset.id);
+  const vb = e.target.closest('[data-tvote]');
+  if (vb) { vote(t, Number(vb.dataset.tvote)); return; }
+  if (e.target.closest('[data-play]')) playTrack(t);
+});
+paneT.addEventListener('input', e => {
+  if (e.target.matches('[data-search]')) { tQuery = e.target.value; fillTracks(); }
+});
+
+/* ─── Visuals ────────────────────────────────────────────────────── */
+let vView = store.get('nd.vview', 'all'), vQuery = '';
+
+function renderVisuals() {
+  if (!canViz || !presetKeys.length) {
+    paneV.innerHTML = `<p class="nd-msg">${!presetKeys.length ? "The visuals didn't load." :
+      reduce ? 'Visuals are off because this device asks for reduced motion.' :
+               "This browser can't run the visualizer (it needs WebGL 2)."}</p>`;
+    return;
+  }
+  const c = countBy(presetKeys, vVoteOf);
+  c.bright = banned.size;
+  const showing = presetKeys.filter(vAllowed).length;
+  paneV.innerHTML = `<div class="lb">
+    <div class="lb-sec">
+      <span class="lb-label">Show from</span>
+      <div class="lb-row">${chips(CATS, 'data-vf', k => vfilter[k], c)}
+        <button class="chip" data-cycle aria-pressed="${autoCycle}">Auto-change</button></div>
+      <p class="lb-help">Rotating through ${plural(showing, 'visual')}${autoCycle ? `, a new one every ${Math.round(CFG.presetHold / 1000)}s` : '. Auto-change is off, so the current one stays'}. Tap the visualizer for its rating bar; double-tap for the next one; press and hold for thumbs down.</p>
+    </div>
+    <div class="lb-sec">
+      <span class="lb-label">Browse</span>
+      <div class="lb-row">${chips(['all', ...CATS, ...(banned.size ? ['bright'] : [])], 'data-vv', k => vView === k, c)}</div>
+      <input class="lb-search" type="search" placeholder="Search visuals" value="${esc(vQuery)}" data-search>
+      <ol class="lb-list" data-list></ol>
+    </div>
+    <div class="lb-foot">
+      <span class="lb-label">Export</span>
+      <p class="lb-help">Same file as on the Tracks tab: tracks and visuals together.</p>
+      <div class="lb-row" style="margin-top:.75rem">
+        <button class="lb-btn lb-btn--hi" data-export>Export JSON</button>
+        ${Object.keys(vvotes).length ? '<button class="lb-btn" data-clear>Clear visual votes</button>' : ''}
+        ${banned.size ? `<button class="lb-btn" data-unban>Restore ${plural(banned.size, 'too-bright visual')}</button>` : ''}
+      </div>
+    </div>
+  </div>`;
+  fillVisuals();
+  armed(paneV.querySelector('[data-clear]'), 'Clear visual votes', () => {
+    for (const k of Object.keys(vvotes)) delete vvotes[k];
+    store.set('nd.vizvotes', vvotes); paintVizBar(); toast('Visual votes cleared'); refreshVisuals();
+  });
+}
+
+function fillVisuals() {
+  const ol = paneV.querySelector('[data-list]');
+  if (!ol) return;
+  const q = vQuery.trim().toLowerCase();
+  const list = presetKeys.filter(k =>
+    (vView === 'all' || (vView === 'bright' ? banned.has(k) : catOf(vVoteOf(k)) === vView)) &&
+    (!q || k.toLowerCase().includes(q)));
+  ol.innerHTML = list.length ? list.map(k => `
+    <li class="lb-item${k === current ? ' is-now' : ''}" data-key="${esc(k)}">
+      <button class="lb-play" data-show>
+        <span class="lb-dot" aria-hidden="true"></span>
+        <span class="lb-txt"><span class="lb-t">${esc(k)}</span>
+          ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : ''}</span>
+      </button>
+      ${voteButtons(vVoteOf(k), 'data-vvote', k)}
+    </li>`).join('')
+    : `<li class="lb-empty">${q ? 'No matches.' : `No ${LABEL[vView].toLowerCase()} visuals yet.`}</li>`;
+}
+
+const refreshVisuals = () => keepScroll(paneV, renderVisuals);
+function markNowVisual() {
+  paneV.querySelectorAll('.lb-item.is-now').forEach(li => li.classList.remove('is-now'));
+  if (current) paneV.querySelector(`.lb-item[data-key="${CSS.escape(current)}"]`)?.classList.add('is-now');
+}
+
+paneV.addEventListener('click', e => {
+  const vf = e.target.closest('[data-vf]');
+  if (vf) {
+    const k = vf.dataset.vf;
+    if (vfilter[k] && CATS.filter(c => vfilter[c]).length === 1) { toast('Keep at least one group on'); return; }
+    vfilter[k] = !vfilter[k];
+    store.set('nd.vfilter', vfilter);
+    if (current && !vAllowed(current) && viz) roll(2.5);
+    refreshVisuals();
+    return;
+  }
+  if (e.target.closest('[data-cycle]')) {
+    autoCycle = !autoCycle; store.set('nd.vcycle', autoCycle);
+    restartCycle(); refreshVisuals();
+    toast(autoCycle ? 'Auto-change on' : 'Auto-change off · holding this visual');
+    return;
+  }
+  const vv = e.target.closest('[data-vv]');
+  if (vv) { vView = vv.dataset.vv; store.set('nd.vview', vView); refreshVisuals(); return; }
+  if (e.target.closest('[data-export]')) { exportAll(); return; }
+  if (e.target.closest('[data-unban]')) {
+    const n = banned.size; banned.clear(); saveBans();
+    toast(`Restored ${plural(n, 'visual')}`); if (vView === 'bright') vView = 'all';
+    refreshVisuals(); return;
+  }
+  const li = e.target.closest('.lb-item');
+  if (!li) return;
+  const k = li.dataset.key;
+  const vb = e.target.closest('[data-vvote]');
+  if (vb) { vizVote(k, Number(vb.dataset.vvote)); return; }
+  if (e.target.closest('[data-show]')) {
+    if (banned.has(k)) { banned.delete(k); saveBans(); }
+    showPreset(k, 2.5);
+    toast(viz ? 'Showing it now' : 'Picked · shows when you press play');
+    refreshVisuals();
+  }
+});
+paneV.addEventListener('input', e => {
+  if (e.target.matches('[data-search]')) { vQuery = e.target.value; fillVisuals(); }
+});
+
+// For fixing things from the console later.
+window.NIGHTDECK = {
+  get preset() { return current; },
+  get tooBright() { return [...banned]; },
+  get queue() { return queue.map(t => t.title); },
+  show: showPreset, next: () => roll(2.5), export: exportAll,
+  unbanAll() { banned.clear(); saveBans(); refreshVisuals(); toast('Too-bright list cleared'); }
+};
 
 /* ═══════════════════════════════════════════════════════════════════
    Notes
@@ -918,11 +1501,8 @@ async function showTimeline() {
       }
       out.push('</ol>');
     }
-    out.push(votesFooter(), vizFooter());
 
     host.innerHTML = out.join('');
-    wireVotesFooter();
-    wireVizFooter();
     host.scrollTop = 0;
     location.hash = '';
   } catch (e) {
@@ -932,74 +1512,6 @@ async function showTimeline() {
       index = null; try { localStorage.removeItem('nd.index'); } catch {}; showTimeline();
     });
   }
-}
-
-/* Track votes: counts, export, and a two-tap reset for after a purge. */
-function votesFooter() {
-  const all = Object.values(votes);
-  const up = all.filter(x => x.v > 0).length, down = all.length - up;
-  return `<div class="nd-viz-footer nd-votes-footer">
-    <span class="nd-viz-footer__label">Track votes</span>
-    <p class="nd-viz-footer__count">${
-      all.length ? `${up} thumbs up · ${down} thumbs down${down ? ' (hidden on this device)' : ''}.`
-                 : 'No votes yet.'
-    }</p>
-    <p class="nd-viz-footer__help">Rate tracks from the bar up top. Export saves a JSON file of your votes to hand back for the next re-curation.</p>
-    <div class="nd-viz-footer__row">
-      <button class="nd-viz-footer__clear" data-export${all.length ? '' : ' disabled'}>Export votes</button>
-      ${all.length ? '<button class="nd-viz-footer__clear" data-clear-votes>Clear votes</button>' : ''}
-    </div>
-  </div>`;
-}
-
-function redrawVotesFooter() {
-  const box = host.querySelector('.nd-votes-footer');
-  if (box) { box.outerHTML = votesFooter(); wireVotesFooter(); }
-}
-
-function wireVotesFooter() {
-  const redraw = redrawVotesFooter;
-  host.querySelector('[data-export]')?.addEventListener('click', exportVotes);
-  const clr = host.querySelector('[data-clear-votes]');
-  clr?.addEventListener('click', () => {
-    if (!clr.hasAttribute('data-armed')) {
-      clr.setAttribute('data-armed', '');
-      clr.textContent = 'Tap again to clear';
-      setTimeout(() => { if (clr.isConnected) { clr.removeAttribute('data-armed'); clr.textContent = 'Clear votes'; } }, 3000);
-      return;
-    }
-    for (const k of Object.keys(votes)) delete votes[k];
-    saveVotes();
-    paintVotes();
-    toast('Votes cleared');
-    redraw();
-  });
-}
-
-/* Visualizer housekeeping, parked at the bottom of the log — the only
-   place in the UI with room for it, and where you'll go looking. */
-function vizFooter() {
-  const n = banned.size;
-  return `<div class="nd-viz-footer">
-    <span class="nd-viz-footer__label">Visualizer</span>
-    <p class="nd-viz-footer__count">${
-      n === 0 ? 'No presets hidden.'
-              : `${n} preset${n === 1 ? '' : 's'} hidden — too bright, or you banned ${n === 1 ? 'it' : 'them'}.`
-    }</p>
-    <p class="nd-viz-footer__help">Double-tap the visualizer to skip. Press and hold to hide one.</p>
-    ${n ? '<button class="nd-viz-footer__clear" data-unban>Restore all presets</button>' : ''}
-  </div>`;
-}
-
-function wireVizFooter() {
-  host.querySelector('[data-unban]')?.addEventListener('click', () => {
-    const n = banned.size;
-    banned.clear();
-    saveBans();
-    toast(`Restored ${n} preset${n === 1 ? '' : 's'}`);
-    const box = host.querySelector('.nd-viz-footer');
-    if (box) { box.outerHTML = vizFooter(); wireVizFooter(); }
-  });
 }
 
 async function openNote(file) {
@@ -1057,11 +1569,21 @@ host.addEventListener('click', e => {
 
 /* --- drawer ------------------------------------------------------- */
 
+const tabs = [...document.querySelectorAll('.dw-tab')];
+function setTab(name) {
+  if (!tabs.some(b => b.dataset.tab === name)) name = 'tracks';
+  store.set('nd.tab', name);
+  for (const b of tabs) b.setAttribute('aria-selected', String(b.dataset.tab === name));
+  for (const p of drawer.querySelectorAll('[data-pane]')) p.hidden = p.dataset.pane !== name;
+}
+tabs.forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+setTab(store.get('nd.tab', 'tracks'));
+
 function setDrawer(open) {
   document.body.classList.toggle('drawer-open', open);
   toggle.setAttribute('aria-expanded', String(open));
   open ? drawer.removeAttribute('inert') : drawer.setAttribute('inert','');
-  if (open) host.querySelector('button, a')?.focus({ preventScroll:true });
+  if (open) { markNowTrack(); markNowVisual(); drawer.querySelector('.dw-tab[aria-selected="true"]')?.focus({ preventScroll:true }); }
   else toggle.focus({ preventScroll:true });
 }
 
@@ -1075,18 +1597,22 @@ document.addEventListener('keydown', e => {
 
 (async function boot() {
   // Escape hatch: szk5334.github.io/lofi-player/?unban
-  // Works even if the drawer is broken or you've banned every preset.
   if (/[?&]unban\b/.test(location.search)) {
     const n = banned.size;
     banned.clear(); saveBans();
     history.replaceState(null, '', location.pathname);
-    setTimeout(() => toast(`Restored ${n} preset${n === 1 ? '' : 's'}`), 400);
+    setTimeout(() => toast(`Restored ${plural(n, 'visual')}`), 400);
   }
+  if (!current && presetKeys.length) current = pickPreset();
+  paintVizBar();
+  renderVisuals();
+  renderTracks();
+  loadLibrary();
   await showTimeline();
   const want = decodeURIComponent(location.hash.slice(1));
   if (want) {
     const n = (index || []).find(x => x.slug === want);
-    if (n) { setDrawer(true); openNote(n.file); }
+    if (n) { setTab('posts'); setDrawer(true); openNote(n.file); }
   }
 })();
 </script>
