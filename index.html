@@ -76,6 +76,11 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
 
 #viz-tone{position:fixed;inset:0;z-index:1;pointer-events:none;
   background:rgba(20,22,28,.26)}
+/* Floral visuals carry their own vignette and tone ceiling, so ease the
+   house dimming while one is up; otherwise the papers go muddy. */
+#viz,#viz-tone{transition:filter 2.5s ease,background-color 2.5s ease}
+body.viz-floral #viz{filter:brightness(.9) saturate(.96) contrast(1.04)}
+body.viz-floral #viz-tone{background:rgba(20,22,28,.1)}
 #viz-shade{position:fixed;inset:0 0 auto 0;height:calc(var(--top)*2.2);z-index:1;
   pointer-events:none;background:linear-gradient(to bottom,
     rgba(20,22,28,.88) 0%,rgba(20,22,28,.55) 45%,rgba(20,22,28,0) 100%)}
@@ -233,13 +238,19 @@ body.drawer-open #drawer{transform:translateY(0)}
 
 /* visualizer rating bar, bottom of the screen */
 #viz-bar{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom,0px));z-index:15;
-  transform:translateX(-50%);display:flex;align-items:center;gap:.25rem;max-width:calc(100vw - 2rem);
+  transform:translateX(-50%);display:flex;flex-direction:column;gap:.1rem;max-width:calc(100vw - 2rem);
   padding:.25rem .3rem .25rem .9rem;background:rgba(20,22,28,.62);border:1px solid rgba(230,227,220,.08);
-  border-radius:999px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-radius:1.2rem;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   transition:opacity 500ms ease}
 #viz-bar[hidden]{display:none}
 #viz-bar.idle{opacity:0;pointer-events:none}
 body.drawer-open #viz-bar{opacity:0;pointer-events:none}
+.vb-row{display:flex;align-items:center;gap:.25rem;min-width:0}
+.vb-row[hidden]{display:none}
+.vb-row + .vb-row{border-top:1px solid rgba(230,227,220,.07);padding-top:.1rem}
+.vb-thumb{flex:0 0 auto;width:1.25rem;height:1.75rem;object-fit:cover;border-radius:2px;margin-right:.35rem;opacity:.85}
+.lb-thumb{flex:0 0 auto;width:2.1rem;height:2.95rem;object-fit:cover;border-radius:2px;align-self:center;
+  background:var(--panel)}
 .vb-name{min-width:0;max-width:52vw;font-family:var(--mono);font-size:.5625rem;letter-spacing:.08em;
   color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:.25rem}
 
@@ -404,6 +415,20 @@ body.drawer-open #viz-bar{opacity:0;pointer-events:none}
 </section>
 
 <div id="viz-bar" class="idle" hidden>
+  <div class="vb-row" id="vb-pic-row" hidden>
+  <img class="vb-thumb" id="vb-thumb" alt="">
+  <span class="vb-name" id="vb-pic"></span>
+  <button class="tp-vote" id="vpic-up" aria-pressed="false" aria-label="Thumbs up this picture">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+  </button>
+  <button class="tp-vote is-down" id="vpic-down" aria-pressed="false" aria-label="Thumbs down this picture">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
+  </button>
+  <button class="tp-mini" id="vpic-next" aria-label="Next picture">
+    <svg viewBox="0 0 14 14"><path d="M11 1h2v12h-2zM1 1v12l9-6z"/></svg>
+  </button>
+  </div>
+  <div class="vb-row">
   <span class="vb-name" id="vb-name"></span>
   <button class="tp-vote" id="vviz-up" aria-pressed="false" aria-label="Thumbs up this visual">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5h3.5V20H3zM6.5 20h10.2a2 2 0 0 0 2-1.6l1.3-6.5a2 2 0 0 0-2-2.4H13l.8-3.8A1.7 1.7 0 0 0 12.1 3.6L6.5 10.5z"/></svg>
@@ -414,6 +439,7 @@ body.drawer-open #viz-bar{opacity:0;pointer-events:none}
   <button class="tp-mini" id="vviz-next" aria-label="Next visual">
     <svg viewBox="0 0 14 14"><path d="M11 1h2v12h-2zM1 1v12l9-6z"/></svg>
   </button>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
@@ -441,6 +467,11 @@ const CFG = {
 
   discussions: 'https://github.com/szk5334/lofi-player/discussions',
 
+  // Floral Deck papers, melted into the Floral visuals (in this repo, floral/)
+  pictures: 'floral/floral.json',
+  picHold: 40000,      // ms before the next picture, while a Floral visual is up
+  floralShare: 0.5,    // with Floral and Classic both on, how often a Floral one is picked
+
   presetHold: 22000,   // ms before drifting to the next preset
   blend: 5.5,          // seconds of crossfade between presets
 
@@ -455,6 +486,188 @@ const CFG = {
   settle: 1800,        // ms to ignore after a preset loads (the crossfade)
   checkEvery: 700      // ms between brightness samples
 };
+
+/* ═══════════════════════════════════════════════════════════════════
+   Floral visuals: Milkdrop presets that melt a Floral Deck paper into
+   the feedback loop.
+
+   How it works: every frame the warp shader takes last frame (already
+   pushed around by zoom / rotation / warp) and mixes a little of the
+   picture back in at its true position. q1 is how much. Motion smears
+   the picture, the re-mix keeps it from washing away, and the music
+   drives both. The picture lives in the texture named "flora".
+   ═══════════════════════════════════════════════════════════════════ */
+
+const FLORAL_PRESETS = (() => {
+  const off = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '' }));
+  const offW = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '', point_eqs_eel: '' }));
+
+  // The picture, right way up, at the pixel's real position.
+  const PIC = 'vec2 pu = vec2(uv_orig.x, 1.0 - uv_orig.y);';
+
+  // Shared finish: soft glow on the bass, a vignette, and a ceiling so
+  // cream grounds stay smoky instead of glaring.
+  const finish = (glow = 0.28) => `
+  vec3 bl = texture(sampler_blur1, uv).xyz * scale1 + bias1;
+  c += ${glow.toFixed(2)} * bl * clamp(bass_att - 0.6, 0.0, 1.6);
+  vec2 d = (uv - 0.5) * vec2(1.0, 1.15);
+  c *= mix(0.5, 1.0, smoothstep(0.78, 0.18, length(d)));
+  c = c / (1.0 + 0.35 * c);
+  ret = c * 0.96;`;
+
+  // Shared beat tracker: q2 = smoothed energy (about 1), q3 = beat pulse 0..1.
+  const BEAT = `
+  e = (bass_att + mid_att) * 0.5;
+  avg = avg * 0.985 + e * 0.015;
+  hit = above(bass, avg * 1.32 + 0.12) * above(time, last + 0.28);
+  last = if(hit, time, last);
+  pulse = max(pulse * 0.92, hit);
+  q2 = min(max(e, 0.2), 2.5);
+  q3 = pulse;`;
+
+  const make = (o) => ({
+    version: 2,
+    baseVals: Object.assign({
+      rating: 5, gammaadj: 1, decay: 1, wave_a: 0, wave_scale: 0.1, modwavealphastart: 0, modwavealphaend: 0,
+      ob_size: 0, ob_a: 0, ib_size: 0, ib_a: 0, mv_a: 0, mv_l: 0,
+      zoom: 1, rot: 0, warp: 0, warpscale: 1, warpanimspeed: 1, wrap: 1, darken_center: 0
+    }, o.base || {}),
+    shapes: off(), waves: offW(),
+    init_eqs_eel: o.init || 'avg = 1; last = 0; pulse = 0;',
+    frame_eqs_eel: BEAT + '\n' + (o.frame || ''),
+    pixel_eqs_eel: o.pixel || '',
+    warp: `uniform sampler2D sampler_flora;\n shader_body {\n  ${PIC}\n${o.warp}\n }`,
+    comp: ` shader_body {\n${o.comp || '  vec3 c = texture(sampler_main, uv).xyz;'}\n${finish(o.glow)}\n }`
+  });
+
+  return {
+    // Petals push outward from the middle and leave trails, harder on the bass.
+    'Floral · Bloom': make({
+      base: { zoom: 1.006, warp: 0.06 },
+      frame: `zoom = 1.004 + 0.014 * min(max(bass_att - 0.9, 0), 1.2);
+  rot = 0.0025 * sin(time * 0.11);
+  q1 = 0.045 + 0.05 * q3;`,
+      pixel: 'zoom = zoom + 0.006 * rad * q3;',
+      warp: `  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.997, pic, q1);`
+    }),
+
+    // The paper is pulled into a slow spiral that tightens toward the centre.
+    'Floral · Whirlpool': make({
+      base: { zoom: 0.997 },
+      frame: `q1 = 0.04 + 0.03 * q3;
+  spin = spin * 0.97 + 0.03 * (0.6 + 0.6 * q2);
+  q4 = spin;`,
+      init: 'avg = 1; last = 0; pulse = 0; spin = 1;',
+      pixel: 'rot = 0.028 * q4 * pow(max(1 - rad * 1.6, 0), 2); zoom = 0.997 - 0.004 * (1 - rad);',
+      warp: `  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.998, pic, q1);`
+    }),
+
+    // Milkdrop's turbulence warp lets the print run like wet ink.
+    'Floral · Ink Bleed': make({
+      base: { warp: 0.9, warpscale: 2.2, warpanimspeed: 0.5, zoom: 1.0 },
+      frame: `warp = 0.7 + 0.6 * q2;
+  q1 = 0.022 + 0.03 * q3;`,
+      warp: `  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.999, pic, q1);`,
+      comp: `  vec3 c = texture(sampler_main, uv).xyz;
+  float l = dot(c, vec3(0.299, 0.587, 0.114));
+  c = mix(vec3(l) * vec3(0.92, 0.9, 1.0), c, 0.75);`,
+      glow: 0.2
+    }),
+
+    // Seen through a rained-on window: the paper refracts and streaks downward.
+    'Floral · Rain on Glass': make({
+      base: { dy: 0.0015, zoom: 1.0 },
+      frame: `dy = 0.001 + 0.002 * q2;
+  q1 = 0.06;`,
+      warp: `  vec2 n = texture(sampler_noise_lq, uv * vec2(0.12, 0.05) + vec2(0.0, time * 0.012)).xy - 0.5;
+  vec2 m = texture(sampler_noise_lq, uv * vec2(0.5, 0.18) + vec2(0.31, time * 0.03)).xy - 0.5;
+  vec2 off = (n * 0.03 + m * 0.008) * (0.6 + 0.5 * q2);
+  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu + off).xyz;
+  ret = mix(fb * 0.993, pic, q1);`,
+      comp: `  vec3 c = texture(sampler_main, uv).xyz;
+  vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
+  c = mix(c, b2, 0.25);`
+    }),
+
+    // Eight-way mirror of the melting paper, turning slowly.
+    'Floral · Kaleidoscope': make({
+      base: { zoom: 1.004, rot: 0.003 },
+      frame: `zoom = 1.002 + 0.01 * q3;
+  rot = 0.002 + 0.004 * (q2 - 1);
+  q1 = 0.05;`,
+      warp: `  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.997, pic, q1);`,
+      comp: `  vec2 p = (uv - 0.5) * aspect.xy;
+  float a = atan(p.y, p.x) + time * 0.025;
+  float r = length(p);
+  float seg = 6.2831853 / 8.0;
+  a = mod(a, seg);
+  a = abs(a - seg * 0.5);
+  vec2 k = vec2(cos(a), sin(a)) * r * (0.9 + 0.05 * q3);
+  vec2 q = k * aspect.zw * 1.6 + 0.5;
+  q = 1.0 - abs(1.0 - mod(q, 2.0));          // mirror-tile so it fills the screen
+  vec3 c = texture(sampler_main, q).xyz;`
+    }),
+
+    // The calm one: the paper stays mostly whole and breathes with the music.
+    'Floral · Breathing': make({
+      base: { zoom: 1.0 },
+      frame: `zoom = 1.0 + 0.003 * sin(time * 0.45) + 0.006 * q3;
+  q1 = 0.14;`,
+      warp: `  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.995, pic, q1);`,
+      glow: 0.45
+    }),
+
+    // Marbled, flowing like chintz in water.
+    'Floral · Liquid Chintz': make({
+      base: { zoom: 1.0 },
+      frame: 'q1 = 0.035 + 0.025 * q3;',
+      warp: `  vec2 n = texture(sampler_noise_lq, uv * 0.07 + vec2(time * 0.011, time * 0.007)).xy - 0.5;
+  vec2 m = texture(sampler_noise_lq, uv * 0.19 - vec2(time * 0.017, 0.0)).xy - 0.5;
+  vec2 flow = (n * 0.008 + m * 0.004) * (0.5 + q2);
+  vec3 fb = texture(sampler_main, uv + flow).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.998, pic, q1);`
+    }),
+
+    // A mirrored echo of the paper, folding over itself.
+    'Floral · Echo': make({
+      base: { zoom: 1.003, echo_zoom: 1.0, echo_alpha: 0.45, echo_orient: 1 },
+      frame: `zoom = 1.002 + 0.008 * q3;
+  rot = 0.0015 * sin(time * 0.07);
+  q1 = 0.05;`,
+      warp: `  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.997, pic, q1);`
+    }),
+
+    // Each beat stamps the paper fresh; between beats it scatters and spins.
+    'Floral · Petal Storm': make({
+      base: { zoom: 1.0, warp: 0.25 },
+      frame: `dir = if(hit, -dir, dir);
+  zoom = 1.0 + 0.02 * q3;
+  rot = dir * 0.012 * (0.4 + q3);
+  warp = 0.2 + 0.5 * q3;
+  q1 = 0.012 + 0.22 * hit;`,
+      init: 'avg = 1; last = 0; pulse = 0; dir = 1;',
+      pixel: 'rot = rot * (0.4 + rad);',
+      warp: `  vec3 fb = texture(sampler_main, uv).xyz;
+  vec3 pic = texture(sampler_flora, pu).xyz;
+  ret = mix(fb * 0.996, pic, q1);`
+    })
+  };
+})();
+const isFloral = k => k.startsWith('Floral · ');
 
 /* ═══════════════════════════════════════════════════════════════════
    Shared helpers
@@ -539,8 +752,9 @@ function presetPool() {
   if (window.extra?.default) Object.assign(all, window.extra.default);
   return all;
 }
-const presets = presetPool();
-const presetKeys = Object.keys(presets).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+const presets = Object.assign(presetPool(), FLORAL_PRESETS);
+const presetKeys = Object.keys(presets).sort((a, b) =>
+  (isFloral(b) - isFloral(a)) || a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
 function vizSize() {
   const dpr = Math.min(devicePixelRatio || 1, 1.75);
@@ -558,6 +772,8 @@ function sizeRenderer() {
   const [w, h] = vizSize();
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   viz.setRendererSize(w, h);
+  clearTimeout(sizeRenderer._t);
+  sizeRenderer._t = setTimeout(() => { if (cropPic()) uploadPic(); }, 250);
 }
 addEventListener('resize', sizeRenderer);
 
@@ -575,11 +791,20 @@ const BANS = 'nd.banned';
 const banned = new Set(store.get(BANS, []));
 const saveBans = () => store.set(BANS, [...banned]);
 
-const vAllowed = k => vfilter[catOf(vVoteOf(k))] && !banned.has(k);
+const vtype = Object.assign({ floral: true, classic: true }, store.get('nd.vtype', {}));
+const typeOf = k => isFloral(k) ? 'floral' : 'classic';
+// Florals need the pictures; without them they'd only show the stock cloud texture.
+const vAllowed = k => vtype[typeOf(k)] && (!isFloral(k) || pics.length > 0) &&
+                      vfilter[catOf(vVoteOf(k))] && !banned.has(k);
 
 function pickPreset() {
   let live = presetKeys.filter(k => k !== current && vAllowed(k));
   if (!live.length) live = presetKeys.filter(vAllowed);
+  // With both kinds on, the nine florals get a fair share instead of 9 in 116.
+  if (vtype.floral && vtype.classic) {
+    const fl = live.filter(isFloral), cl = live.filter(k => !isFloral(k));
+    if (fl.length && cl.length) live = Math.random() < CFG.floralShare ? fl : cl;
+  }
   if (!live.length) live = presetKeys.filter(k => !banned.has(k) && vVoteOf(k) >= 0);
   if (!live.length) live = presetKeys.filter(k => !banned.has(k));
   if (!live.length) { banned.clear(); saveBans(); live = presetKeys; }
@@ -594,6 +819,8 @@ function restartCycle() {
 function showPreset(k, blend = 2.5) {
   if (!k || !presets[k]) return;
   current = k;
+  document.body.classList.toggle('viz-floral', isFloral(k));
+  if (isFloral(k) && !curPic && pics.length) showPicture(pickPic());
   paintVizBar();
   markNowVisual();
   if (!viz) return;                 // remembered; loads once playback starts
@@ -615,6 +842,7 @@ function startVisualizer() {
     pixelRatio: 1,      // dpr is already baked into width/height
     textureRatio: 1
   });
+  uploadPic();
 
   // Butterchurn runs ~0.26s behind the audio it analyses, so delay the
   // audible path to match.
@@ -672,7 +900,8 @@ function runLoop() {
     if (now < settled || now - checked < CFG.checkEvery) return;
     checked = now;
 
-    if (brightness() * 0.72 > CFG.maxBrightness && vVoteOf(current) <= 0) {
+    // Florals are exempt: the papers' cream grounds are meant to be light.
+    if (brightness() * 0.72 > CFG.maxBrightness && vVoteOf(current) <= 0 && !isFloral(current)) {
       if (++hot >= 2) {
         banned.add(current); saveBans();
         console.info('nightdeck: too bright —', current);
@@ -697,6 +926,7 @@ document.addEventListener('visibilitychange', () => {
 const vbar = $('viz-bar');
 function paintVizBar() {
   $('vb-name').textContent = current || '';
+  paintPicBar();
   const v = vVoteOf(current);
   $('vviz-up').setAttribute('aria-pressed', String(v > 0));
   $('vviz-down').setAttribute('aria-pressed', String(v < 0));
@@ -725,6 +955,9 @@ function vizVote(k, v) {
 $('vviz-up').addEventListener('click', () => { vizVote(current, 1); wakeBar(); });
 $('vviz-down').addEventListener('click', () => { vizVote(current, -1); wakeBar(); });
 $('vviz-next').addEventListener('click', () => { roll(2.5); });
+$('vpic-up').addEventListener('click', () => { picVote(curPic, 1); wakeBar(); });
+$('vpic-down').addEventListener('click', () => { picVote(curPic, -1); wakeBar(); });
+$('vpic-next').addEventListener('click', () => { showPicture(pickPic()); wakeBar(); });
 
 const onViz = e => !e.target.closest('#transport, #drawer, #viz-bar');
 let held = null, lastTap = 0, lastX = 0, lastY = 0;
@@ -800,6 +1033,123 @@ document.addEventListener('keydown', e => {
     }
   })(0);
 })();
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   Pictures: the Floral Deck papers, full colour and sun print.
+   The Floral visuals melt whichever one is current into the feedback
+   loop (texture "flora"). Same voting and filters as tracks and visuals.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const PICS_URL = new URL(CFG.pictures, location.href).href;
+let pics = [], picById = new Map(), curPic = null, picImg = null, picCycle = null;
+const pvotes  = store.get('nd.picvotes', {});
+const pfilter = Object.assign({ up: true, none: true, down: false }, store.get('nd.pfilter', {}));
+const ptype   = Object.assign({ color: true, sun: true }, store.get('nd.ptype', {}));
+let picAuto   = store.get('nd.pauto', true);
+const pVoteOf  = p => (p && pvotes[p.id]?.v) || 0;
+const pAllowed = p => ptype[p.kind] && pfilter[catOf(pVoteOf(p))];
+const PTYPE = { color: 'Full colour', sun: 'Sun print' };
+const picLabel = p => p.kind === 'sun' ? `sun print${p.ink ? ' · ' + p.ink : ''}` : 'full colour';
+
+async function loadPictures() {
+  try {
+    const r = await fetch(PICS_URL, { cache: 'no-cache' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    pics = (j.pictures || []).map(p => ({ ...p,
+      url: new URL(p.file, PICS_URL).href, thumbUrl: new URL(p.thumb || p.file, PICS_URL).href }));
+    picById = new Map(pics.map(p => [p.id, p]));
+  } catch (e) { console.warn('pictures:', e); pics = []; }
+}
+
+function pickPic() {
+  let live = pics.filter(p => p !== curPic && pAllowed(p));
+  if (!live.length) live = pics.filter(pAllowed);
+  if (!live.length) live = pics.filter(p => pVoteOf(p) >= 0);
+  if (!live.length) live = pics;
+  return live[Math.floor(Math.random() * live.length)];
+}
+
+// Cover-fit the paper to the screen's shape, so the shaders can sample it 1:1.
+const picCanvas = document.createElement('canvas');
+function cropPic() {
+  if (!picImg) return false;
+  const [w, h] = vizSize();
+  const s = Math.min(1, 1024 / Math.max(w, h));
+  const W = Math.max(2, Math.round(w * s)), H = Math.max(2, Math.round(h * s));
+  picCanvas.width = W; picCanvas.height = H;
+  const k = Math.max(W / picImg.naturalWidth, H / picImg.naturalHeight);
+  const dw = picImg.naturalWidth * k, dh = picImg.naturalHeight * k;
+  picCanvas.getContext('2d').drawImage(picImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  return true;
+}
+
+// Butterchurn only adds named textures once, so swap the pixels in place.
+function uploadPic() {
+  if (!viz || !picImg) return;
+  try {
+    const I = viz.renderer.image;
+    if (!I.samplers.flora) I.samplers.flora = I.gl.createTexture();
+    I.bindTexture(I.samplers.flora, picCanvas, picCanvas.width, picCanvas.height);
+  } catch (e) { console.warn('picture upload:', e); }
+}
+
+function showPicture(p) {
+  if (!p) return;
+  curPic = p;
+  paintPicBar(); markNowPic();
+  const img = new Image();
+  img.onload = () => { if (curPic !== p) return; picImg = img; cropPic(); uploadPic(); };
+  img.onerror = () => console.warn('picture failed:', p.url);
+  img.src = p.url;
+  restartPicCycle();
+}
+
+function restartPicCycle() {
+  clearInterval(picCycle); picCycle = null;
+  if (picAuto) picCycle = setInterval(() => {
+    if (viz && isFloral(current) && !document.hidden) showPicture(pickPic());
+  }, CFG.picHold);
+}
+
+function paintPicBar() {
+  const row = $('vb-pic-row');
+  const on = isFloral(current) && !!curPic;
+  row.hidden = !on;
+  if (!on) return;
+  if ($('vb-thumb').getAttribute('src') !== curPic.thumbUrl) $('vb-thumb').src = curPic.thumbUrl;
+  $('vb-pic').textContent = `${curPic.title} · ${picLabel(curPic)}`;
+  const v = pVoteOf(curPic);
+  $('vpic-up').setAttribute('aria-pressed', String(v > 0));
+  $('vpic-down').setAttribute('aria-pressed', String(v < 0));
+}
+
+function picVote(p, v) {
+  if (!p) return;
+  if (pVoteOf(p) === v) { delete pvotes[p.id]; toast('Picture vote removed'); }
+  else {
+    pvotes[p.id] = { v, title: p.title, kind: p.kind, at: new Date().toISOString() };
+    toast(v > 0 ? 'Picture · thumbs up' : 'Picture · thumbs down');
+  }
+  store.set('nd.picvotes', pvotes);
+  navigator.vibrate?.(12);
+  paintPicBar();
+  if (p === curPic && pVoteOf(p) < 0 && !pfilter.down) showPicture(pickPic());
+  refreshVisuals();
+}
+
+// Picking a picture from the list puts a Floral visual up if one isn't already.
+function showPictureNow(p) {
+  showPicture(p);
+  if (!isFloral(current)) {
+    const fl = presetKeys.filter(k => isFloral(k) && vVoteOf(k) >= 0);
+    const k = fl.filter(k => vfilter[catOf(vVoteOf(k))]);
+    const pool = k.length ? k : fl.length ? fl : presetKeys.filter(isFloral);
+    showPreset(pool[Math.floor(Math.random() * pool.length)], 2.5);
+  }
+  toast(viz ? 'Showing it now' : 'Picked · shows when you press play');
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    Audio
@@ -1125,20 +1475,36 @@ function exportAll() {
   for (const [k, x] of Object.entries(vvotes)) if (!presets[k])
     V[x.v > 0 ? 'up' : 'down'].push({ preset: k, voted_at: x.at, in_pool: false });
 
+  const P = { up: [], down: [], unrated: [] };
+  for (const p of pics) {
+    const v = pVoteOf(p);
+    const e = { id: p.id, title: p.title, kind: p.kind === 'sun' ? 'sun print' : 'full colour', ink: p.ink || null,
+                source: p.source || '', page: p.page || '' };
+    if (v) e.voted_at = pvotes[p.id].at;
+    P[v > 0 ? 'up' : v < 0 ? 'down' : 'unrated'].push(e);
+  }
+  for (const [id, x] of Object.entries(pvotes)) if (!picById.has(id))
+    P[x.v > 0 ? 'up' : 'down'].push({ id, title: x.title, voted_at: x.at, in_set: false });
+
   const name = c => c === 'none' ? 'unrated' : c;
   const exported_at = new Date().toISOString();
   const data = {
     app: 'nightdeck', kind: 'curation', version: 2, exported_at,
     tracks: { counts: { total: allTracks.length, up: T.up.length, down: T.down.length, unrated: T.unrated.length }, ...T },
     visuals: { counts: { total: presetKeys.length, up: V.up.length, down: V.down.length, unrated: V.unrated.length, too_bright: V.too_bright.length }, ...V },
+    pictures: { counts: { total: pics.length, up: P.up.length, down: P.down.length, unrated: P.unrated.length }, ...P },
     settings: {
       play_filter: CATS.filter(c => tfilter[c]).map(name),
       visual_filter: CATS.filter(c => vfilter[c]).map(name),
+      visual_kinds: Object.keys(vtype).filter(k => vtype[k]),
+      picture_filter: CATS.filter(c => pfilter[c]).map(name),
+      picture_kinds: Object.keys(ptype).filter(k => ptype[k]).map(k => PTYPE[k].toLowerCase()),
+      picture_auto_change: picAuto,
       shuffle: shuffleOn, auto_cycle: autoCycle
     }
   };
   download(`nightdeck-curation-${exported_at.slice(0, 10)}.json`, data);
-  toast(`Exported ${plural(allTracks.length, 'track')} · ${plural(presetKeys.length, 'visual')}`);
+  toast(`Exported ${plural(allTracks.length, 'track')} · ${plural(presetKeys.length, 'visual')} · ${plural(pics.length, 'picture')}`);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1269,8 +1635,10 @@ paneT.addEventListener('input', e => {
   if (e.target.matches('[data-search]')) { tQuery = e.target.value; fillTracks(); }
 });
 
-/* ─── Visuals ────────────────────────────────────────────────────── */
+/* ─── Visuals tab: two lists, Visuals and Pictures ───────────────── */
+let vSub = store.get('nd.vsub', 'visuals');
 let vView = store.get('nd.vview', 'all'), vQuery = '';
+let pView = store.get('nd.pview', 'all'), pQuery = '';
 
 function renderVisuals() {
   if (!canViz || !presetKeys.length) {
@@ -1279,15 +1647,64 @@ function renderVisuals() {
                "This browser can't run the visualizer (it needs WebGL 2)."}</p>`;
     return;
   }
+  const sub = `<div class="lb-sec"><div class="lb-row">
+      <button class="chip" data-vsub="visuals" aria-pressed="${vSub === 'visuals'}">Visuals<span class="n">${presetKeys.length}</span></button>
+      <button class="chip" data-vsub="pictures" aria-pressed="${vSub === 'pictures'}" ${pics.length ? '' : 'disabled'}>Pictures<span class="n">${pics.length}</span></button>
+    </div></div>`;
+  const foot = (clearAttr, clearLabel, extra = '') => `
+    <div class="lb-foot">
+      <span class="lb-label">Export</span>
+      <p class="lb-help">One file for everything: tracks, visuals and pictures, each grouped liked / disliked / unrated.</p>
+      <div class="lb-row" style="margin-top:.75rem">
+        <button class="lb-btn lb-btn--hi" data-export>Export JSON</button>
+        ${clearAttr ? `<button class="lb-btn" ${clearAttr}>${clearLabel}</button>` : ''}${extra}
+      </div>
+    </div>`;
+
+  if (vSub === 'pictures' && pics.length) {
+    const c = countBy(pics, pVoteOf);
+    const tc = { color: pics.filter(p => p.kind === 'color').length, sun: pics.filter(p => p.kind === 'sun').length };
+    const showing = pics.filter(pAllowed).length;
+    paneV.innerHTML = `<div class="lb">${sub}
+      <div class="lb-sec">
+        <span class="lb-label">Show from</span>
+        <div class="lb-row">${chips(CATS, 'data-pf', k => pfilter[k], c)}</div>
+        <div class="lb-row" style="margin-top:.4rem">
+          ${['color', 'sun'].map(k => `<button class="chip" data-pt="${k}" aria-pressed="${ptype[k]}">${PTYPE[k]}<span class="n">${tc[k]}</span></button>`).join('')}
+          <button class="chip" data-pauto aria-pressed="${picAuto}">Auto-change</button>
+        </div>
+        <p class="lb-help">The Floral visuals melt these papers into the music. ${plural(showing, 'picture')} in rotation${picAuto ? `, a new one every ${Math.round(CFG.picHold / 1000)}s` : '; auto-change is off, so the current one stays'}. Tap one to see it now.</p>
+      </div>
+      <div class="lb-sec">
+        <span class="lb-label">Browse</span>
+        <div class="lb-row">${chips(['all', ...CATS], 'data-pv', k => pView === k, c)}</div>
+        <input class="lb-search" type="search" placeholder="Search pictures" value="${esc(pQuery)}" data-search>
+        <ol class="lb-list" data-list></ol>
+      </div>
+      ${foot(Object.keys(pvotes).length ? 'data-pclear' : '', 'Clear picture votes')}
+    </div>`;
+    fillPictures();
+    armed(paneV.querySelector('[data-pclear]'), 'Clear picture votes', () => {
+      for (const k of Object.keys(pvotes)) delete pvotes[k];
+      store.set('nd.picvotes', pvotes); paintPicBar(); toast('Picture votes cleared'); refreshVisuals();
+    });
+    return;
+  }
+
   const c = countBy(presetKeys, vVoteOf);
   c.bright = banned.size;
+  const tc = { floral: presetKeys.filter(isFloral).length, classic: presetKeys.filter(k => !isFloral(k)).length };
   const showing = presetKeys.filter(vAllowed).length;
-  paneV.innerHTML = `<div class="lb">
+  paneV.innerHTML = `<div class="lb">${sub}
     <div class="lb-sec">
       <span class="lb-label">Show from</span>
-      <div class="lb-row">${chips(CATS, 'data-vf', k => vfilter[k], c)}
-        <button class="chip" data-cycle aria-pressed="${autoCycle}">Auto-change</button></div>
-      <p class="lb-help">Rotating through ${plural(showing, 'visual')}${autoCycle ? `, a new one every ${Math.round(CFG.presetHold / 1000)}s` : '. Auto-change is off, so the current one stays'}. Tap the visualizer for its rating bar; double-tap for the next one; press and hold for thumbs down.</p>
+      <div class="lb-row">${chips(CATS, 'data-vf', k => vfilter[k], c)}</div>
+      <div class="lb-row" style="margin-top:.4rem">
+        <button class="chip" data-vt="floral" aria-pressed="${vtype.floral}">Floral<span class="n">${tc.floral}</span></button>
+        <button class="chip" data-vt="classic" aria-pressed="${vtype.classic}">Classic<span class="n">${tc.classic}</span></button>
+        <button class="chip" data-cycle aria-pressed="${autoCycle}">Auto-change</button>
+      </div>
+      <p class="lb-help">Rotating through ${plural(showing, 'visual')}${autoCycle ? `, a new one every ${Math.round(CFG.presetHold / 1000)}s` : '; auto-change is off, so the current one stays'}${vtype.floral && vtype.classic ? ', about half of them Floral' : ''}. Tap the visualizer for its rating bar; double-tap for the next one; press and hold for thumbs down.</p>
     </div>
     <div class="lb-sec">
       <span class="lb-label">Browse</span>
@@ -1295,15 +1712,8 @@ function renderVisuals() {
       <input class="lb-search" type="search" placeholder="Search visuals" value="${esc(vQuery)}" data-search>
       <ol class="lb-list" data-list></ol>
     </div>
-    <div class="lb-foot">
-      <span class="lb-label">Export</span>
-      <p class="lb-help">Same file as on the Tracks tab: tracks and visuals together.</p>
-      <div class="lb-row" style="margin-top:.75rem">
-        <button class="lb-btn lb-btn--hi" data-export>Export JSON</button>
-        ${Object.keys(vvotes).length ? '<button class="lb-btn" data-clear>Clear visual votes</button>' : ''}
-        ${banned.size ? `<button class="lb-btn" data-unban>Restore ${plural(banned.size, 'too-bright visual')}</button>` : ''}
-      </div>
-    </div>
+    ${foot(Object.keys(vvotes).length ? 'data-clear' : '', 'Clear visual votes',
+      banned.size ? `<button class="lb-btn" data-unban>Restore ${plural(banned.size, 'too-bright visual')}</button>` : '')}
   </div>`;
   fillVisuals();
   armed(paneV.querySelector('[data-clear]'), 'Clear visual votes', () => {
@@ -1324,50 +1734,95 @@ function fillVisuals() {
       <button class="lb-play" data-show>
         <span class="lb-dot" aria-hidden="true"></span>
         <span class="lb-txt"><span class="lb-t">${esc(k)}</span>
-          ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : ''}</span>
+          ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : isFloral(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">floral · melts the pictures</span></span>' : ''}</span>
       </button>
       ${voteButtons(vVoteOf(k), 'data-vvote', k)}
     </li>`).join('')
     : `<li class="lb-empty">${q ? 'No matches.' : `No ${LABEL[vView].toLowerCase()} visuals yet.`}</li>`;
 }
 
+function fillPictures() {
+  const ol = paneV.querySelector('[data-list]');
+  if (!ol) return;
+  const q = pQuery.trim().toLowerCase();
+  const list = pics.filter(p => (pView === 'all' || catOf(pVoteOf(p)) === pView) &&
+    (!q || `${p.title} ${p.source} ${picLabel(p)}`.toLowerCase().includes(q)));
+  ol.innerHTML = list.length ? list.map(p => `
+    <li class="lb-item${p === curPic ? ' is-now' : ''}" data-pid="${esc(p.id)}">
+      <button class="lb-play" data-pshow>
+        <span class="lb-dot" aria-hidden="true"></span>
+        <img class="lb-thumb" src="${esc(p.thumbUrl)}" alt="" loading="lazy" decoding="async">
+        <span class="lb-txt"><span class="lb-t">${esc(p.title)}</span>
+          <span class="lb-a">${esc(p.source || '')}<span class="lb-tag">${esc(picLabel(p))}</span></span></span>
+      </button>
+      ${voteButtons(pVoteOf(p), 'data-pvote', p.title)}
+    </li>`).join('')
+    : `<li class="lb-empty">${q ? 'No matches.' : `No ${LABEL[pView].toLowerCase()} pictures yet.`}</li>`;
+}
+
 const refreshVisuals = () => keepScroll(paneV, renderVisuals);
 function markNowVisual() {
+  if (vSub !== 'visuals') return;
   paneV.querySelectorAll('.lb-item.is-now').forEach(li => li.classList.remove('is-now'));
   if (current) paneV.querySelector(`.lb-item[data-key="${CSS.escape(current)}"]`)?.classList.add('is-now');
 }
+function markNowPic() {
+  if (vSub !== 'pictures') return;
+  paneV.querySelectorAll('.lb-item.is-now').forEach(li => li.classList.remove('is-now'));
+  if (curPic) paneV.querySelector(`.lb-item[data-pid="${CSS.escape(curPic.id)}"]`)?.classList.add('is-now');
+}
+
+// Turn one of a group of switches on/off, never all of them off.
+function flip(obj, k, keys, key) {
+  if (obj[k] && keys.filter(c => obj[c]).length === 1) { toast('Keep at least one on'); return false; }
+  obj[k] = !obj[k]; store.set(key, obj); return true;
+}
 
 paneV.addEventListener('click', e => {
-  const vf = e.target.closest('[data-vf]');
-  if (vf) {
-    const k = vf.dataset.vf;
-    if (vfilter[k] && CATS.filter(c => vfilter[c]).length === 1) { toast('Keep at least one group on'); return; }
-    vfilter[k] = !vfilter[k];
-    store.set('nd.vfilter', vfilter);
-    if (current && !vAllowed(current) && viz) roll(2.5);
-    refreshVisuals();
-    return;
-  }
-  if (e.target.closest('[data-cycle]')) {
+  const t = e.target.closest('button');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.vsub) { vSub = d.vsub; store.set('nd.vsub', vSub); paneV.scrollTop = 0; renderVisuals(); return; }
+  if ('export' in d) { exportAll(); return; }
+
+  // visuals
+  if (d.vf) { if (flip(vfilter, d.vf, CATS, 'nd.vfilter')) { if (viz && current && !vAllowed(current)) roll(2.5); refreshVisuals(); } return; }
+  if (d.vt) { if (flip(vtype, d.vt, ['floral', 'classic'], 'nd.vtype')) { if (viz && current && !vAllowed(current)) roll(2.5); refreshVisuals(); } return; }
+  if ('cycle' in d) {
     autoCycle = !autoCycle; store.set('nd.vcycle', autoCycle);
     restartCycle(); refreshVisuals();
     toast(autoCycle ? 'Auto-change on' : 'Auto-change off · holding this visual');
     return;
   }
-  const vv = e.target.closest('[data-vv]');
-  if (vv) { vView = vv.dataset.vv; store.set('nd.vview', vView); refreshVisuals(); return; }
-  if (e.target.closest('[data-export]')) { exportAll(); return; }
-  if (e.target.closest('[data-unban]')) {
+  if (d.vv) { vView = d.vv; store.set('nd.vview', vView); refreshVisuals(); return; }
+  if ('unban' in d) {
     const n = banned.size; banned.clear(); saveBans();
     toast(`Restored ${plural(n, 'visual')}`); if (vView === 'bright') vView = 'all';
     refreshVisuals(); return;
   }
-  const li = e.target.closest('.lb-item');
+
+  // pictures
+  if (d.pf) { if (flip(pfilter, d.pf, CATS, 'nd.pfilter')) { if (curPic && !pAllowed(curPic)) showPicture(pickPic()); refreshVisuals(); } return; }
+  if (d.pt) { if (flip(ptype, d.pt, ['color', 'sun'], 'nd.ptype')) { if (curPic && !pAllowed(curPic)) showPicture(pickPic()); refreshVisuals(); } return; }
+  if ('pauto' in d) {
+    picAuto = !picAuto; store.set('nd.pauto', picAuto);
+    restartPicCycle(); refreshVisuals();
+    toast(picAuto ? 'Pictures change on their own' : 'Holding this picture');
+    return;
+  }
+  if (d.pv) { pView = d.pv; store.set('nd.pview', pView); refreshVisuals(); return; }
+
+  const li = t.closest('.lb-item');
   if (!li) return;
+  if (li.dataset.pid) {
+    const p = picById.get(li.dataset.pid);
+    if (d.pvote) { picVote(p, Number(d.pvote)); return; }
+    if ('pshow' in d) { showPictureNow(p); markNowPic(); }
+    return;
+  }
   const k = li.dataset.key;
-  const vb = e.target.closest('[data-vvote]');
-  if (vb) { vizVote(k, Number(vb.dataset.vvote)); return; }
-  if (e.target.closest('[data-show]')) {
+  if (d.vvote) { vizVote(k, Number(d.vvote)); return; }
+  if ('show' in d) {
     if (banned.has(k)) { banned.delete(k); saveBans(); }
     showPreset(k, 2.5);
     toast(viz ? 'Showing it now' : 'Picked · shows when you press play');
@@ -1375,7 +1830,9 @@ paneV.addEventListener('click', e => {
   }
 });
 paneV.addEventListener('input', e => {
-  if (e.target.matches('[data-search]')) { vQuery = e.target.value; fillVisuals(); }
+  if (!e.target.matches('[data-search]')) return;
+  if (vSub === 'pictures') { pQuery = e.target.value; fillPictures(); }
+  else { vQuery = e.target.value; fillVisuals(); }
 });
 
 // For fixing things from the console later.
@@ -1383,7 +1840,8 @@ window.NIGHTDECK = {
   get preset() { return current; },
   get tooBright() { return [...banned]; },
   get queue() { return queue.map(t => t.title); },
-  show: showPreset, next: () => roll(2.5), export: exportAll,
+  get picture() { return curPic?.id; },
+  show: showPreset, next: () => roll(2.5), export: exportAll, showPicture: id => showPicture(picById.get(id)),
   unbanAll() { banned.clear(); saveBans(); refreshVisuals(); toast('Too-bright list cleared'); }
 };
 
@@ -1603,11 +2061,13 @@ document.addEventListener('keydown', e => {
     history.replaceState(null, '', location.pathname);
     setTimeout(() => toast(`Restored ${plural(n, 'visual')}`), 400);
   }
+  renderTracks();
+  loadLibrary();
+  await loadPictures();
+  if (pics.length) showPicture(pickPic());
   if (!current && presetKeys.length) current = pickPreset();
   paintVizBar();
   renderVisuals();
-  renderTracks();
-  loadLibrary();
   await showTimeline();
   const want = decodeURIComponent(location.hash.slice(1));
   if (want) {

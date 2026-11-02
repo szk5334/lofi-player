@@ -1,0 +1,1469 @@
+{
+ "name": "Floral Deck papers",
+ "license": "CC0 1.0",
+ "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+ "from": "https://github.com/szk5334/Floral-Deck",
+ "credit": "Smithsonian Open Access (Cooper Hewitt, Smithsonian Design Museum), CC0",
+ "pictures": [
+  {
+   "id": "color:african-marigold",
+   "title": "African marigold",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-african-marigold.jpg",
+   "thumb": "thumb/c-african-marigold.jpg",
+   "source": "African Marigold, 1876, England",
+   "page": "https://www.si.edu/object/chndm_1936-5-1-a_b"
+  },
+  {
+   "id": "color:bird-of-paradise-bloom",
+   "title": "Bird of paradise bloom",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-bird-of-paradise-bloom.jpg",
+   "thumb": "thumb/c-bird-of-paradise-bloom.jpg",
+   "source": "Chintz fragments, 18th century, India",
+   "page": "https://www.si.edu/object/chndm_1973-51-1-a_d"
+  },
+  {
+   "id": "color:blue-and-pink-sprays",
+   "title": "Blue and pink sprays",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-blue-and-pink-sprays.jpg",
+   "thumb": "thumb/c-blue-and-pink-sprays.jpg",
+   "source": "Textile, 1851–63, France, Alsace Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-24"
+  },
+  {
+   "id": "color:blue-flowered-design",
+   "title": "Blue flowered design",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-blue-flowered-design.jpg",
+   "thumb": "thumb/c-blue-flowered-design.jpg",
+   "source": "Design for Flowered Fabric or Wallpaper, 1880–90, France and USA",
+   "page": "https://www.si.edu/object/chndm_1954-136-1"
+  },
+  {
+   "id": "color:blue-lattice-with-flowers",
+   "title": "Blue lattice with flowers",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-blue-lattice-with-flowers.jpg",
+   "thumb": "thumb/c-blue-lattice-with-flowers.jpg",
+   "source": "Textile, 1851–63, Mulhouse, France",
+   "page": "https://www.si.edu/object/chndm_1967-10-10-a"
+  },
+  {
+   "id": "color:blue-lilac",
+   "title": "Blue lilac",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-blue-lilac.jpg",
+   "thumb": "thumb/c-blue-lilac.jpg",
+   "source": "Textile, 1851–63",
+   "page": "https://www.si.edu/object/chndm_1967-10-14-c"
+  },
+  {
+   "id": "color:bright-floral-wallpaper",
+   "title": "Bright floral wallpaper",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-bright-floral-wallpaper.jpg",
+   "thumb": "thumb/c-bright-floral-wallpaper.jpg",
+   "source": "Sidewall, ca. 1800, France",
+   "page": "https://www.si.edu/object/chndm_1968-111-11"
+  },
+  {
+   "id": "color:cabbage-roses",
+   "title": "Cabbage roses",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-cabbage-roses.jpg",
+   "thumb": "thumb/c-cabbage-roses.jpg",
+   "source": "Textile, 1725–50, India",
+   "page": "https://www.si.edu/object/chndm_1968-79-2"
+  },
+  {
+   "id": "color:cascading-wisteria",
+   "title": "Cascading wisteria",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-cascading-wisteria.jpg",
+   "thumb": "thumb/c-cascading-wisteria.jpg",
+   "source": "Sidewall, 1890–1920, Buffalo, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1973-2-4"
+  },
+  {
+   "id": "color:chintz-pink-sprays",
+   "title": "Chintz pink sprays",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-chintz-pink-sprays.jpg",
+   "thumb": "thumb/c-chintz-pink-sprays.jpg",
+   "source": "Textile, 18th century, India",
+   "page": "https://www.si.edu/object/chndm_1973-51-66"
+  },
+  {
+   "id": "color:chintz-roses-blue-and-red",
+   "title": "Chintz roses blue and red",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-chintz-roses-blue-and-red.jpg",
+   "thumb": "thumb/c-chintz-roses-blue-and-red.jpg",
+   "source": "Textile, 18th century, India",
+   "page": "https://www.si.edu/object/chndm_1973-51-37"
+  },
+  {
+   "id": "color:design-blue-and-green-leaves",
+   "title": "Design blue and green leaves",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-blue-and-green-leaves.jpg",
+   "thumb": "thumb/c-design-blue-and-green-leaves.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-55"
+  },
+  {
+   "id": "color:design-bold-purple-flowers",
+   "title": "Design bold purple flowers",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-bold-purple-flowers.jpg",
+   "thumb": "thumb/c-design-bold-purple-flowers.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-65"
+  },
+  {
+   "id": "color:design-flowering-branches",
+   "title": "Design flowering branches",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-flowering-branches.jpg",
+   "thumb": "thumb/c-design-flowering-branches.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-68"
+  },
+  {
+   "id": "color:design-grapevine",
+   "title": "Design grapevine",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-grapevine.jpg",
+   "thumb": "thumb/c-design-grapevine.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-66"
+  },
+  {
+   "id": "color:design-morning-glories",
+   "title": "Design morning glories",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-morning-glories.jpg",
+   "thumb": "thumb/c-design-morning-glories.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-69"
+  },
+  {
+   "id": "color:design-pink-and-purple-sprays",
+   "title": "Design pink and purple sprays",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-pink-and-purple-sprays.jpg",
+   "thumb": "thumb/c-design-pink-and-purple-sprays.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-54"
+  },
+  {
+   "id": "color:design-pink-roses",
+   "title": "Design pink roses",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-pink-roses.jpg",
+   "thumb": "thumb/c-design-pink-roses.jpg",
+   "source": "Design for a woven fabric, 1830–50, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-27"
+  },
+  {
+   "id": "color:design-pink-wild-roses",
+   "title": "Design pink wild roses",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-pink-wild-roses.jpg",
+   "thumb": "thumb/c-design-pink-wild-roses.jpg",
+   "source": "Design for a printed fabric, 1820–40, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-25"
+  },
+  {
+   "id": "color:design-poppy-and-primrose",
+   "title": "Design poppy and primrose",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-poppy-and-primrose.jpg",
+   "thumb": "thumb/c-design-poppy-and-primrose.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-53"
+  },
+  {
+   "id": "color:design-purple-feathery-sprays",
+   "title": "Design purple feathery sprays",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-purple-feathery-sprays.jpg",
+   "thumb": "thumb/c-design-purple-feathery-sprays.jpg",
+   "source": "Floral design for printed textiles, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-47-c"
+  },
+  {
+   "id": "color:design-purple-flower-sprigs",
+   "title": "Design purple flower sprigs",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-purple-flower-sprigs.jpg",
+   "thumb": "thumb/c-design-purple-flower-sprigs.jpg",
+   "source": "Design for the Embroidery of Wearing Apparel, No. 18, of the \"Fabrique de St. Ruf\", 1780–1790, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-65"
+  },
+  {
+   "id": "color:design-red-flowers-and-blue",
+   "title": "Design red flowers and blue",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-red-flowers-and-blue.jpg",
+   "thumb": "thumb/c-design-red-flowers-and-blue.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-52"
+  },
+  {
+   "id": "color:design-red-on-speckle",
+   "title": "Design red on speckle",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-red-on-speckle.jpg",
+   "thumb": "thumb/c-design-red-on-speckle.jpg",
+   "source": "Design for Printed Textile, 18th century, France",
+   "page": "https://www.si.edu/object/chndm_1989-65-9"
+  },
+  {
+   "id": "color:design-round-flowers",
+   "title": "Design round flowers",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-round-flowers.jpg",
+   "thumb": "thumb/c-design-round-flowers.jpg",
+   "source": "Design for Printed Cotton, 1790, France",
+   "page": "https://www.si.edu/object/chndm_1954-44-2"
+  },
+  {
+   "id": "color:design-thistles-and-bells",
+   "title": "Design thistles and bells",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-thistles-and-bells.jpg",
+   "thumb": "thumb/c-design-thistles-and-bells.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-63"
+  },
+  {
+   "id": "color:design-trailing-pink-and-blue",
+   "title": "Design trailing pink and blue",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-trailing-pink-and-blue.jpg",
+   "thumb": "thumb/c-design-trailing-pink-and-blue.jpg",
+   "source": "Design for a printed fabric, 1820–40, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-26"
+  },
+  {
+   "id": "color:design-white-vine",
+   "title": "Design white vine",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-white-vine.jpg",
+   "thumb": "thumb/c-design-white-vine.jpg",
+   "source": "Design for a Printed Vertical Border, 18th century, France",
+   "page": "https://www.si.edu/object/chndm_1909-13-135"
+  },
+  {
+   "id": "color:design-yellow-and-magenta",
+   "title": "Design yellow and magenta",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-design-yellow-and-magenta.jpg",
+   "thumb": "thumb/c-design-yellow-and-magenta.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-64"
+  },
+  {
+   "id": "color:escholtzia",
+   "title": "Escholtzia",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-escholtzia.jpg",
+   "thumb": "thumb/c-escholtzia.jpg",
+   "source": "Escholtzia, ca. 1890, England",
+   "page": "https://www.si.edu/object/chndm_1952-105-38"
+  },
+  {
+   "id": "color:fern-and-bluebells",
+   "title": "Fern and bluebells",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-fern-and-bluebells.jpg",
+   "thumb": "thumb/c-fern-and-bluebells.jpg",
+   "source": "Drawing, late 19th century, France and USA",
+   "page": "https://www.si.edu/object/chndm_1975-73-1-10"
+  },
+  {
+   "id": "color:hibiscus-ink-print",
+   "title": "Hibiscus ink print",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-hibiscus-ink-print.jpg",
+   "thumb": "thumb/c-hibiscus-ink-print.jpg",
+   "source": "Hibiscus, maple and autumn wheat grass, mid 18th - early 19th century, Japan",
+   "page": "https://www.si.edu/object/chndm_1976-103-59"
+  },
+  {
+   "id": "color:hydrangeas",
+   "title": "Hydrangeas",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-hydrangeas.jpg",
+   "thumb": "thumb/c-hydrangeas.jpg",
+   "source": "Textile, late 19th century, England",
+   "page": "https://www.si.edu/object/chndm_1960-79-33"
+  },
+  {
+   "id": "color:irises-and-lilac",
+   "title": "Irises and lilac",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-irises-and-lilac.jpg",
+   "thumb": "thumb/c-irises-and-lilac.jpg",
+   "source": "Textile, 1851–63, France, Alsace, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-14-a"
+  },
+  {
+   "id": "color:irises-on-cream",
+   "title": "Irises on cream",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-irises-on-cream.jpg",
+   "thumb": "thumb/c-irises-on-cream.jpg",
+   "source": "Sidewall, 1890–1920, possibly USA",
+   "page": "https://www.si.edu/object/chndm_1973-2-9"
+  },
+  {
+   "id": "color:jacobean-red-flowers",
+   "title": "Jacobean red flowers",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-jacobean-red-flowers.jpg",
+   "thumb": "thumb/c-jacobean-red-flowers.jpg",
+   "source": "Textile, 1750–1800, Jouy, France",
+   "page": "https://www.si.edu/object/chndm_1973-51-83-a_b"
+  },
+  {
+   "id": "color:lilac-roses-on-white",
+   "title": "Lilac roses on white",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-lilac-roses-on-white.jpg",
+   "thumb": "thumb/c-lilac-roses-on-white.jpg",
+   "source": "Sidewall, 1830–50, France",
+   "page": "https://www.si.edu/object/chndm_1974-81-6-a_b"
+  },
+  {
+   "id": "color:lilacs-on-grey",
+   "title": "Lilacs on grey",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-lilacs-on-grey.jpg",
+   "thumb": "thumb/c-lilacs-on-grey.jpg",
+   "source": "Textile, mid-19th century, France, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-20-a"
+  },
+  {
+   "id": "color:lily-border-design",
+   "title": "Lily border design",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-lily-border-design.jpg",
+   "thumb": "thumb/c-lily-border-design.jpg",
+   "source": "Trial-proof for a printed vertical border, 1780–1800, France",
+   "page": "https://www.si.edu/object/chndm_1931-94-1"
+  },
+  {
+   "id": "color:mauve-silk-flowering-branches",
+   "title": "Mauve silk flowering branches",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-mauve-silk-flowering-branches.jpg",
+   "thumb": "thumb/c-mauve-silk-flowering-branches.jpg",
+   "source": "Textile, ca. 1775, France",
+   "page": "https://www.si.edu/object/chndm_1952-149-5"
+  },
+  {
+   "id": "color:painted-bouquet-design",
+   "title": "Painted bouquet design",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-painted-bouquet-design.jpg",
+   "thumb": "thumb/c-painted-bouquet-design.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-47"
+  },
+  {
+   "id": "color:pansy-and-violet-bouquet",
+   "title": "Pansy and violet bouquet",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-pansy-and-violet-bouquet.jpg",
+   "thumb": "thumb/c-pansy-and-violet-bouquet.jpg",
+   "source": "Designs for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-26"
+  },
+  {
+   "id": "color:pink-carnations",
+   "title": "Pink carnations",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-pink-carnations.jpg",
+   "thumb": "thumb/c-pink-carnations.jpg",
+   "source": "Textile, mid-19th century, France, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-17-a"
+  },
+  {
+   "id": "color:pink-roses-on-cream",
+   "title": "Pink roses on cream",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-pink-roses-on-cream.jpg",
+   "thumb": "thumb/c-pink-roses-on-cream.jpg",
+   "source": "Sidewall, 1890–1900, Brooklyn, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1939-45-15"
+  },
+  {
+   "id": "color:print-flower-sprays",
+   "title": "Print flower sprays",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-print-flower-sprays.jpg",
+   "thumb": "thumb/c-print-flower-sprays.jpg",
+   "source": "Print, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1989-54-1"
+  },
+  {
+   "id": "color:proof-blue-narcissus",
+   "title": "Proof blue narcissus",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-proof-blue-narcissus.jpg",
+   "thumb": "thumb/c-proof-blue-narcissus.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1780–90, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-11"
+  },
+  {
+   "id": "color:proof-blue-stars-on-yellow",
+   "title": "Proof blue stars on yellow",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-proof-blue-stars-on-yellow.jpg",
+   "thumb": "thumb/c-proof-blue-stars-on-yellow.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-15"
+  },
+  {
+   "id": "color:proof-carnation-sprig",
+   "title": "Proof carnation sprig",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-proof-carnation-sprig.jpg",
+   "thumb": "thumb/c-proof-carnation-sprig.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-10"
+  },
+  {
+   "id": "color:proof-red-and-green-sprig",
+   "title": "Proof red and green sprig",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-proof-red-and-green-sprig.jpg",
+   "thumb": "thumb/c-proof-red-and-green-sprig.jpg",
+   "source": "Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-12"
+  },
+  {
+   "id": "color:proof-red-rose",
+   "title": "Proof red rose",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-proof-red-rose.jpg",
+   "thumb": "thumb/c-proof-red-rose.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-9"
+  },
+  {
+   "id": "color:purple-hydrangea-and-lilac",
+   "title": "Purple hydrangea and lilac",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-purple-hydrangea-and-lilac.jpg",
+   "thumb": "thumb/c-purple-hydrangea-and-lilac.jpg",
+   "source": "Textile, mid-19th century, France, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-19-a"
+  },
+  {
+   "id": "color:purple-roses-on-stripes",
+   "title": "Purple roses on stripes",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-purple-roses-on-stripes.jpg",
+   "thumb": "thumb/c-purple-roses-on-stripes.jpg",
+   "source": "Sidewall - sample, 1906–08, USA",
+   "page": "https://www.si.edu/object/chndm_1985-19-76"
+  },
+  {
+   "id": "color:purple-roses-silk",
+   "title": "Purple roses silk",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-purple-roses-silk.jpg",
+   "thumb": "thumb/c-purple-roses-silk.jpg",
+   "source": "Textile, ca. 1915, Lyon, France",
+   "page": "https://www.si.edu/object/chndm_1938-82-163-b"
+  },
+  {
+   "id": "color:quilt-bouquet",
+   "title": "Quilt bouquet",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-quilt-bouquet.jpg",
+   "thumb": "thumb/c-quilt-bouquet.jpg",
+   "source": "Quilt fragment, ca. 1835, England",
+   "page": "https://www.si.edu/object/chndm_1959-145-1"
+  },
+  {
+   "id": "color:red-bird-in-tree",
+   "title": "Red bird in tree",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-red-bird-in-tree.jpg",
+   "thumb": "thumb/c-red-bird-in-tree.jpg",
+   "source": "Textile, 1780–89, France",
+   "page": "https://www.si.edu/object/chndm_1975-60-20"
+  },
+  {
+   "id": "color:red-roses-wallpaper",
+   "title": "Red roses wallpaper",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-red-roses-wallpaper.jpg",
+   "thumb": "thumb/c-red-roses-wallpaper.jpg",
+   "source": "Sidewall, 1905–1915, Sandy Hill, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-755"
+  },
+  {
+   "id": "color:rose-bouquet",
+   "title": "Rose bouquet",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-rose-bouquet.jpg",
+   "thumb": "thumb/c-rose-bouquet.jpg",
+   "source": "Textile, 1850–99, England",
+   "page": "https://www.si.edu/object/chndm_1953-38-4"
+  },
+  {
+   "id": "color:rose-wreath-design",
+   "title": "Rose wreath design",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-rose-wreath-design.jpg",
+   "thumb": "thumb/c-rose-wreath-design.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-42"
+  },
+  {
+   "id": "color:roses-on-aqua",
+   "title": "Roses on aqua",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-roses-on-aqua.jpg",
+   "thumb": "thumb/c-roses-on-aqua.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-51"
+  },
+  {
+   "id": "color:roses-on-white-wallpaper",
+   "title": "Roses on white wallpaper",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-roses-on-white-wallpaper.jpg",
+   "thumb": "thumb/c-roses-on-white-wallpaper.jpg",
+   "source": "Sidewall, 1905–1915, Brooklyn, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-781"
+  },
+  {
+   "id": "color:toile-bird",
+   "title": "Toile bird",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-toile-bird.jpg",
+   "thumb": "thumb/c-toile-bird.jpg",
+   "source": "Textile, 1775–1800, France",
+   "page": "https://www.si.edu/object/chndm_1980-34-13-a"
+  },
+  {
+   "id": "color:trial-proof-carnation",
+   "title": "Trial proof carnation",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-trial-proof-carnation.jpg",
+   "thumb": "thumb/c-trial-proof-carnation.jpg",
+   "source": "Trial Proof for a Flower Chintz, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1898-21-25-a"
+  },
+  {
+   "id": "color:tulips-and-forget-me-nots",
+   "title": "Tulips and forget me nots",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-tulips-and-forget-me-nots.jpg",
+   "thumb": "thumb/c-tulips-and-forget-me-nots.jpg",
+   "source": "Textile, 1840–60, England",
+   "page": "https://www.si.edu/object/chndm_1952-105-12"
+  },
+  {
+   "id": "color:violet-bouquets-on-aqua",
+   "title": "Violet bouquets on aqua",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-violet-bouquets-on-aqua.jpg",
+   "thumb": "thumb/c-violet-bouquets-on-aqua.jpg",
+   "source": "Textile, 1851–63, Mulhouse, France",
+   "page": "https://www.si.edu/object/chndm_1967-10-3-b"
+  },
+  {
+   "id": "color:violet-sprigs-frieze",
+   "title": "Violet sprigs frieze",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-violet-sprigs-frieze.jpg",
+   "thumb": "thumb/c-violet-sprigs-frieze.jpg",
+   "source": "Frieze, 1905–1915, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-283"
+  },
+  {
+   "id": "color:violets-on-lilac",
+   "title": "Violets on lilac",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-violets-on-lilac.jpg",
+   "thumb": "thumb/c-violets-on-lilac.jpg",
+   "source": "Textile, 1851–63, Mulhouse, France",
+   "page": "https://www.si.edu/object/chndm_1967-10-6-a"
+  },
+  {
+   "id": "color:wallpaper-design-crown-imperial",
+   "title": "Wallpaper design crown imperial",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-wallpaper-design-crown-imperial.jpg",
+   "thumb": "thumb/c-wallpaper-design-crown-imperial.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-16"
+  },
+  {
+   "id": "color:wallpaper-design-pink-blossom",
+   "title": "Wallpaper design pink blossom",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-wallpaper-design-pink-blossom.jpg",
+   "thumb": "thumb/c-wallpaper-design-pink-blossom.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-15"
+  },
+  {
+   "id": "color:wallpaper-design-wallflowers",
+   "title": "Wallpaper design wallflowers",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-wallpaper-design-wallflowers.jpg",
+   "thumb": "thumb/c-wallpaper-design-wallflowers.jpg",
+   "source": "Design for Wallpaper and Textile: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-11"
+  },
+  {
+   "id": "color:wallpaper-design-wildflowers",
+   "title": "Wallpaper design wildflowers",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-wallpaper-design-wildflowers.jpg",
+   "thumb": "thumb/c-wallpaper-design-wildflowers.jpg",
+   "source": "Design for Wallpaper and Textile: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-1"
+  },
+  {
+   "id": "color:wisteria-on-trellis",
+   "title": "Wisteria on trellis",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-wisteria-on-trellis.jpg",
+   "thumb": "thumb/c-wisteria-on-trellis.jpg",
+   "source": "Sidewall, 1902, Buffalo, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1971-58-9-a_b"
+  },
+  {
+   "id": "color:woodblock-pomegranate-design",
+   "title": "Woodblock pomegranate design",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-woodblock-pomegranate-design.jpg",
+   "thumb": "thumb/c-woodblock-pomegranate-design.jpg",
+   "source": "Design for Woodblock Textile Print, ca. 1790, Flanders",
+   "page": "https://www.si.edu/object/chndm_1956-35-1"
+  },
+  {
+   "id": "color:yellow-roses-wallpaper",
+   "title": "Yellow roses wallpaper",
+   "kind": "color",
+   "ink": null,
+   "file": "full/c-yellow-roses-wallpaper.jpg",
+   "thumb": "thumb/c-yellow-roses-wallpaper.jpg",
+   "source": "Sidewall, 1905–1915, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-1174"
+  },
+  {
+   "id": "sun:african-marigold-blue",
+   "title": "African marigold",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-african-marigold-blue.jpg",
+   "thumb": "thumb/s-african-marigold-blue.jpg",
+   "source": "African Marigold, 1876, England",
+   "page": "https://www.si.edu/object/chndm_1936-5-1-a_b"
+  },
+  {
+   "id": "sun:bird-of-paradise-bloom-blue",
+   "title": "Bird of paradise bloom",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-bird-of-paradise-bloom-blue.jpg",
+   "thumb": "thumb/s-bird-of-paradise-bloom-blue.jpg",
+   "source": "Chintz fragments, 18th century, India",
+   "page": "https://www.si.edu/object/chndm_1973-51-1-a_d"
+  },
+  {
+   "id": "sun:blue-and-pink-sprays-blue",
+   "title": "Blue and pink sprays",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-blue-and-pink-sprays-blue.jpg",
+   "thumb": "thumb/s-blue-and-pink-sprays-blue.jpg",
+   "source": "Textile, 1851–63, France, Alsace Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-24"
+  },
+  {
+   "id": "sun:blue-flowered-design-blue",
+   "title": "Blue flowered design",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-blue-flowered-design-blue.jpg",
+   "thumb": "thumb/s-blue-flowered-design-blue.jpg",
+   "source": "Design for Flowered Fabric or Wallpaper, 1880–90, France and USA",
+   "page": "https://www.si.edu/object/chndm_1954-136-1"
+  },
+  {
+   "id": "sun:blue-lattice-with-flowers-blue",
+   "title": "Blue lattice with flowers",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-blue-lattice-with-flowers-blue.jpg",
+   "thumb": "thumb/s-blue-lattice-with-flowers-blue.jpg",
+   "source": "Textile, 1851–63, Mulhouse, France",
+   "page": "https://www.si.edu/object/chndm_1967-10-10-a"
+  },
+  {
+   "id": "sun:blue-lilac-blue",
+   "title": "Blue lilac",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-blue-lilac-blue.jpg",
+   "thumb": "thumb/s-blue-lilac-blue.jpg",
+   "source": "Textile, 1851–63",
+   "page": "https://www.si.edu/object/chndm_1967-10-14-c"
+  },
+  {
+   "id": "sun:bright-floral-wallpaper-green",
+   "title": "Bright floral wallpaper",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-bright-floral-wallpaper-green.jpg",
+   "thumb": "thumb/s-bright-floral-wallpaper-green.jpg",
+   "source": "Sidewall, ca. 1800, France",
+   "page": "https://www.si.edu/object/chndm_1968-111-11"
+  },
+  {
+   "id": "sun:cabbage-roses-red",
+   "title": "Cabbage roses",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-cabbage-roses-red.jpg",
+   "thumb": "thumb/s-cabbage-roses-red.jpg",
+   "source": "Textile, 1725–50, India",
+   "page": "https://www.si.edu/object/chndm_1968-79-2"
+  },
+  {
+   "id": "sun:cascading-wisteria-purple",
+   "title": "Cascading wisteria",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-cascading-wisteria-purple.jpg",
+   "thumb": "thumb/s-cascading-wisteria-purple.jpg",
+   "source": "Sidewall, 1890–1920, Buffalo, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1973-2-4"
+  },
+  {
+   "id": "sun:chintz-pink-sprays-blue",
+   "title": "Chintz pink sprays",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-chintz-pink-sprays-blue.jpg",
+   "thumb": "thumb/s-chintz-pink-sprays-blue.jpg",
+   "source": "Textile, 18th century, India",
+   "page": "https://www.si.edu/object/chndm_1973-51-66"
+  },
+  {
+   "id": "sun:chintz-roses-blue-and-red-blue",
+   "title": "Chintz roses blue and red",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-chintz-roses-blue-and-red-blue.jpg",
+   "thumb": "thumb/s-chintz-roses-blue-and-red-blue.jpg",
+   "source": "Textile, 18th century, India",
+   "page": "https://www.si.edu/object/chndm_1973-51-37"
+  },
+  {
+   "id": "sun:design-blue-and-green-leaves-blue",
+   "title": "Design blue and green leaves",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-design-blue-and-green-leaves-blue.jpg",
+   "thumb": "thumb/s-design-blue-and-green-leaves-blue.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-55"
+  },
+  {
+   "id": "sun:design-bold-purple-flowers-purple",
+   "title": "Design bold purple flowers",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-design-bold-purple-flowers-purple.jpg",
+   "thumb": "thumb/s-design-bold-purple-flowers-purple.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-65"
+  },
+  {
+   "id": "sun:design-flowering-branches-green",
+   "title": "Design flowering branches",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-design-flowering-branches-green.jpg",
+   "thumb": "thumb/s-design-flowering-branches-green.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-68"
+  },
+  {
+   "id": "sun:design-grapevine-green",
+   "title": "Design grapevine",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-design-grapevine-green.jpg",
+   "thumb": "thumb/s-design-grapevine-green.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-66"
+  },
+  {
+   "id": "sun:design-morning-glories-blue",
+   "title": "Design morning glories",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-design-morning-glories-blue.jpg",
+   "thumb": "thumb/s-design-morning-glories-blue.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-69"
+  },
+  {
+   "id": "sun:design-pink-and-purple-sprays-red",
+   "title": "Design pink and purple sprays",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-design-pink-and-purple-sprays-red.jpg",
+   "thumb": "thumb/s-design-pink-and-purple-sprays-red.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-54"
+  },
+  {
+   "id": "sun:design-pink-roses-green",
+   "title": "Design pink roses",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-design-pink-roses-green.jpg",
+   "thumb": "thumb/s-design-pink-roses-green.jpg",
+   "source": "Design for a woven fabric, 1830–50, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-27"
+  },
+  {
+   "id": "sun:design-pink-wild-roses-green",
+   "title": "Design pink wild roses",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-design-pink-wild-roses-green.jpg",
+   "thumb": "thumb/s-design-pink-wild-roses-green.jpg",
+   "source": "Design for a printed fabric, 1820–40, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-25"
+  },
+  {
+   "id": "sun:design-poppy-and-primrose-green",
+   "title": "Design poppy and primrose",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-design-poppy-and-primrose-green.jpg",
+   "thumb": "thumb/s-design-poppy-and-primrose-green.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-53"
+  },
+  {
+   "id": "sun:design-purple-feathery-sprays-purple",
+   "title": "Design purple feathery sprays",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-design-purple-feathery-sprays-purple.jpg",
+   "thumb": "thumb/s-design-purple-feathery-sprays-purple.jpg",
+   "source": "Floral design for printed textiles, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-47-c"
+  },
+  {
+   "id": "sun:design-purple-flower-sprigs-purple",
+   "title": "Design purple flower sprigs",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-design-purple-flower-sprigs-purple.jpg",
+   "thumb": "thumb/s-design-purple-flower-sprigs-purple.jpg",
+   "source": "Design for the Embroidery of Wearing Apparel, No. 18, of the \"Fabrique de St. Ruf\", 1780–1790, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-65"
+  },
+  {
+   "id": "sun:design-red-flowers-and-blue-red",
+   "title": "Design red flowers and blue",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-design-red-flowers-and-blue-red.jpg",
+   "thumb": "thumb/s-design-red-flowers-and-blue-red.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-52"
+  },
+  {
+   "id": "sun:design-red-on-speckle-red",
+   "title": "Design red on speckle",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-design-red-on-speckle-red.jpg",
+   "thumb": "thumb/s-design-red-on-speckle-red.jpg",
+   "source": "Design for Printed Textile, 18th century, France",
+   "page": "https://www.si.edu/object/chndm_1989-65-9"
+  },
+  {
+   "id": "sun:design-round-flowers-red",
+   "title": "Design round flowers",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-design-round-flowers-red.jpg",
+   "thumb": "thumb/s-design-round-flowers-red.jpg",
+   "source": "Design for Printed Cotton, 1790, France",
+   "page": "https://www.si.edu/object/chndm_1954-44-2"
+  },
+  {
+   "id": "sun:design-thistles-and-bells-green",
+   "title": "Design thistles and bells",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-design-thistles-and-bells-green.jpg",
+   "thumb": "thumb/s-design-thistles-and-bells-green.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-63"
+  },
+  {
+   "id": "sun:design-trailing-pink-and-blue-green",
+   "title": "Design trailing pink and blue",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-design-trailing-pink-and-blue-green.jpg",
+   "thumb": "thumb/s-design-trailing-pink-and-blue-green.jpg",
+   "source": "Design for a printed fabric, 1820–40, France",
+   "page": "https://www.si.edu/object/chndm_1920-36-26"
+  },
+  {
+   "id": "sun:design-white-vine-yellow",
+   "title": "Design white vine",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-design-white-vine-yellow.jpg",
+   "thumb": "thumb/s-design-white-vine-yellow.jpg",
+   "source": "Design for a Printed Vertical Border, 18th century, France",
+   "page": "https://www.si.edu/object/chndm_1909-13-135"
+  },
+  {
+   "id": "sun:design-yellow-and-magenta-yellow",
+   "title": "Design yellow and magenta",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-design-yellow-and-magenta-yellow.jpg",
+   "thumb": "thumb/s-design-yellow-and-magenta-yellow.jpg",
+   "source": "Floral design for printed textile, 1800–1818, France",
+   "page": "https://www.si.edu/object/chndm_1957-46-64"
+  },
+  {
+   "id": "sun:escholtzia-green",
+   "title": "Escholtzia",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-escholtzia-green.jpg",
+   "thumb": "thumb/s-escholtzia-green.jpg",
+   "source": "Escholtzia, ca. 1890, England",
+   "page": "https://www.si.edu/object/chndm_1952-105-38"
+  },
+  {
+   "id": "sun:fern-and-bluebells-yellow",
+   "title": "Fern and bluebells",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-fern-and-bluebells-yellow.jpg",
+   "thumb": "thumb/s-fern-and-bluebells-yellow.jpg",
+   "source": "Drawing, late 19th century, France and USA",
+   "page": "https://www.si.edu/object/chndm_1975-73-1-10"
+  },
+  {
+   "id": "sun:hibiscus-ink-print-yellow",
+   "title": "Hibiscus ink print",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-hibiscus-ink-print-yellow.jpg",
+   "thumb": "thumb/s-hibiscus-ink-print-yellow.jpg",
+   "source": "Hibiscus, maple and autumn wheat grass, mid 18th - early 19th century, Japan",
+   "page": "https://www.si.edu/object/chndm_1976-103-59"
+  },
+  {
+   "id": "sun:hydrangeas-yellow",
+   "title": "Hydrangeas",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-hydrangeas-yellow.jpg",
+   "thumb": "thumb/s-hydrangeas-yellow.jpg",
+   "source": "Textile, late 19th century, England",
+   "page": "https://www.si.edu/object/chndm_1960-79-33"
+  },
+  {
+   "id": "sun:irises-and-lilac-blue",
+   "title": "Irises and lilac",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-irises-and-lilac-blue.jpg",
+   "thumb": "thumb/s-irises-and-lilac-blue.jpg",
+   "source": "Textile, 1851–63, France, Alsace, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-14-a"
+  },
+  {
+   "id": "sun:irises-on-cream-purple",
+   "title": "Irises on cream",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-irises-on-cream-purple.jpg",
+   "thumb": "thumb/s-irises-on-cream-purple.jpg",
+   "source": "Sidewall, 1890–1920, possibly USA",
+   "page": "https://www.si.edu/object/chndm_1973-2-9"
+  },
+  {
+   "id": "sun:jacobean-red-flowers-red",
+   "title": "Jacobean red flowers",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-jacobean-red-flowers-red.jpg",
+   "thumb": "thumb/s-jacobean-red-flowers-red.jpg",
+   "source": "Textile, 1750–1800, Jouy, France",
+   "page": "https://www.si.edu/object/chndm_1973-51-83-a_b"
+  },
+  {
+   "id": "sun:lilac-roses-on-white-green",
+   "title": "Lilac roses on white",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-lilac-roses-on-white-green.jpg",
+   "thumb": "thumb/s-lilac-roses-on-white-green.jpg",
+   "source": "Sidewall, 1830–50, France",
+   "page": "https://www.si.edu/object/chndm_1974-81-6-a_b"
+  },
+  {
+   "id": "sun:lilacs-on-grey-purple",
+   "title": "Lilacs on grey",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-lilacs-on-grey-purple.jpg",
+   "thumb": "thumb/s-lilacs-on-grey-purple.jpg",
+   "source": "Textile, mid-19th century, France, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-20-a"
+  },
+  {
+   "id": "sun:lily-border-design-yellow",
+   "title": "Lily border design",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-lily-border-design-yellow.jpg",
+   "thumb": "thumb/s-lily-border-design-yellow.jpg",
+   "source": "Trial-proof for a printed vertical border, 1780–1800, France",
+   "page": "https://www.si.edu/object/chndm_1931-94-1"
+  },
+  {
+   "id": "sun:mauve-silk-flowering-branches-purple",
+   "title": "Mauve silk flowering branches",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-mauve-silk-flowering-branches-purple.jpg",
+   "thumb": "thumb/s-mauve-silk-flowering-branches-purple.jpg",
+   "source": "Textile, ca. 1775, France",
+   "page": "https://www.si.edu/object/chndm_1952-149-5"
+  },
+  {
+   "id": "sun:painted-bouquet-design-yellow",
+   "title": "Painted bouquet design",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-painted-bouquet-design-yellow.jpg",
+   "thumb": "thumb/s-painted-bouquet-design-yellow.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-47"
+  },
+  {
+   "id": "sun:pansy-and-violet-bouquet-purple",
+   "title": "Pansy and violet bouquet",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-pansy-and-violet-bouquet-purple.jpg",
+   "thumb": "thumb/s-pansy-and-violet-bouquet-purple.jpg",
+   "source": "Designs for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-26"
+  },
+  {
+   "id": "sun:pink-carnations-blue",
+   "title": "Pink carnations",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-pink-carnations-blue.jpg",
+   "thumb": "thumb/s-pink-carnations-blue.jpg",
+   "source": "Textile, mid-19th century, France, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-17-a"
+  },
+  {
+   "id": "sun:pink-roses-on-cream-blue",
+   "title": "Pink roses on cream",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-pink-roses-on-cream-blue.jpg",
+   "thumb": "thumb/s-pink-roses-on-cream-blue.jpg",
+   "source": "Sidewall, 1890–1900, Brooklyn, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1939-45-15"
+  },
+  {
+   "id": "sun:print-flower-sprays-blue",
+   "title": "Print flower sprays",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-print-flower-sprays-blue.jpg",
+   "thumb": "thumb/s-print-flower-sprays-blue.jpg",
+   "source": "Print, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1989-54-1"
+  },
+  {
+   "id": "sun:proof-blue-narcissus-green",
+   "title": "Proof blue narcissus",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-proof-blue-narcissus-green.jpg",
+   "thumb": "thumb/s-proof-blue-narcissus-green.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1780–90, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-11"
+  },
+  {
+   "id": "sun:proof-blue-stars-on-yellow-yellow",
+   "title": "Proof blue stars on yellow",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-proof-blue-stars-on-yellow-yellow.jpg",
+   "thumb": "thumb/s-proof-blue-stars-on-yellow-yellow.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-15"
+  },
+  {
+   "id": "sun:proof-carnation-sprig-red",
+   "title": "Proof carnation sprig",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-proof-carnation-sprig-red.jpg",
+   "thumb": "thumb/s-proof-carnation-sprig-red.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-10"
+  },
+  {
+   "id": "sun:proof-red-and-green-sprig-green",
+   "title": "Proof red and green sprig",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-proof-red-and-green-sprig-green.jpg",
+   "thumb": "thumb/s-proof-red-and-green-sprig-green.jpg",
+   "source": "Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-12"
+  },
+  {
+   "id": "sun:proof-red-rose-red",
+   "title": "Proof red rose",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-proof-red-rose-red.jpg",
+   "thumb": "thumb/s-proof-red-rose-red.jpg",
+   "source": "Woodblock Trial Proof for a Printed Textile, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1909-29-9"
+  },
+  {
+   "id": "sun:purple-hydrangea-and-lilac-purple",
+   "title": "Purple hydrangea and lilac",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-purple-hydrangea-and-lilac-purple.jpg",
+   "thumb": "thumb/s-purple-hydrangea-and-lilac-purple.jpg",
+   "source": "Textile, mid-19th century, France, Mulhouse",
+   "page": "https://www.si.edu/object/chndm_1967-10-19-a"
+  },
+  {
+   "id": "sun:purple-roses-on-stripes-green",
+   "title": "Purple roses on stripes",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-purple-roses-on-stripes-green.jpg",
+   "thumb": "thumb/s-purple-roses-on-stripes-green.jpg",
+   "source": "Sidewall - sample, 1906–08, USA",
+   "page": "https://www.si.edu/object/chndm_1985-19-76"
+  },
+  {
+   "id": "sun:purple-roses-silk-purple",
+   "title": "Purple roses silk",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-purple-roses-silk-purple.jpg",
+   "thumb": "thumb/s-purple-roses-silk-purple.jpg",
+   "source": "Textile, ca. 1915, Lyon, France",
+   "page": "https://www.si.edu/object/chndm_1938-82-163-b"
+  },
+  {
+   "id": "sun:quilt-bouquet-red",
+   "title": "Quilt bouquet",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-quilt-bouquet-red.jpg",
+   "thumb": "thumb/s-quilt-bouquet-red.jpg",
+   "source": "Quilt fragment, ca. 1835, England",
+   "page": "https://www.si.edu/object/chndm_1959-145-1"
+  },
+  {
+   "id": "sun:red-bird-in-tree-red",
+   "title": "Red bird in tree",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-red-bird-in-tree-red.jpg",
+   "thumb": "thumb/s-red-bird-in-tree-red.jpg",
+   "source": "Textile, 1780–89, France",
+   "page": "https://www.si.edu/object/chndm_1975-60-20"
+  },
+  {
+   "id": "sun:red-roses-wallpaper-red",
+   "title": "Red roses wallpaper",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-red-roses-wallpaper-red.jpg",
+   "thumb": "thumb/s-red-roses-wallpaper-red.jpg",
+   "source": "Sidewall, 1905–1915, Sandy Hill, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-755"
+  },
+  {
+   "id": "sun:rose-bouquet-red",
+   "title": "Rose bouquet",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-rose-bouquet-red.jpg",
+   "thumb": "thumb/s-rose-bouquet-red.jpg",
+   "source": "Textile, 1850–99, England",
+   "page": "https://www.si.edu/object/chndm_1953-38-4"
+  },
+  {
+   "id": "sun:rose-wreath-design-yellow",
+   "title": "Rose wreath design",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-rose-wreath-design-yellow.jpg",
+   "thumb": "thumb/s-rose-wreath-design-yellow.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-42"
+  },
+  {
+   "id": "sun:roses-on-aqua-blue",
+   "title": "Roses on aqua",
+   "kind": "sun",
+   "ink": "blue",
+   "file": "full/s-roses-on-aqua-blue.jpg",
+   "thumb": "thumb/s-roses-on-aqua-blue.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-51"
+  },
+  {
+   "id": "sun:roses-on-white-wallpaper-red",
+   "title": "Roses on white wallpaper",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-roses-on-white-wallpaper-red.jpg",
+   "thumb": "thumb/s-roses-on-white-wallpaper-red.jpg",
+   "source": "Sidewall, 1905–1915, Brooklyn, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-781"
+  },
+  {
+   "id": "sun:toile-bird-red",
+   "title": "Toile bird",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-toile-bird-red.jpg",
+   "thumb": "thumb/s-toile-bird-red.jpg",
+   "source": "Textile, 1775–1800, France",
+   "page": "https://www.si.edu/object/chndm_1980-34-13-a"
+  },
+  {
+   "id": "sun:trial-proof-carnation-green",
+   "title": "Trial proof carnation",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-trial-proof-carnation-green.jpg",
+   "thumb": "thumb/s-trial-proof-carnation-green.jpg",
+   "source": "Trial Proof for a Flower Chintz, 1790–1800, France",
+   "page": "https://www.si.edu/object/chndm_1898-21-25-a"
+  },
+  {
+   "id": "sun:tulips-and-forget-me-nots-green",
+   "title": "Tulips and forget me nots",
+   "kind": "sun",
+   "ink": "green",
+   "file": "full/s-tulips-and-forget-me-nots-green.jpg",
+   "thumb": "thumb/s-tulips-and-forget-me-nots-green.jpg",
+   "source": "Textile, 1840–60, England",
+   "page": "https://www.si.edu/object/chndm_1952-105-12"
+  },
+  {
+   "id": "sun:violet-bouquets-on-aqua-purple",
+   "title": "Violet bouquets on aqua",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-violet-bouquets-on-aqua-purple.jpg",
+   "thumb": "thumb/s-violet-bouquets-on-aqua-purple.jpg",
+   "source": "Textile, 1851–63, Mulhouse, France",
+   "page": "https://www.si.edu/object/chndm_1967-10-3-b"
+  },
+  {
+   "id": "sun:violet-sprigs-frieze-purple",
+   "title": "Violet sprigs frieze",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-violet-sprigs-frieze-purple.jpg",
+   "thumb": "thumb/s-violet-sprigs-frieze-purple.jpg",
+   "source": "Frieze, 1905–1915, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-283"
+  },
+  {
+   "id": "sun:violets-on-lilac-purple",
+   "title": "Violets on lilac",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-violets-on-lilac-purple.jpg",
+   "thumb": "thumb/s-violets-on-lilac-purple.jpg",
+   "source": "Textile, 1851–63, Mulhouse, France",
+   "page": "https://www.si.edu/object/chndm_1967-10-6-a"
+  },
+  {
+   "id": "sun:wallpaper-design-crown-imperial-yellow",
+   "title": "Wallpaper design crown imperial",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-wallpaper-design-crown-imperial-yellow.jpg",
+   "thumb": "thumb/s-wallpaper-design-crown-imperial-yellow.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-16"
+  },
+  {
+   "id": "sun:wallpaper-design-pink-blossom-red",
+   "title": "Wallpaper design pink blossom",
+   "kind": "sun",
+   "ink": "red",
+   "file": "full/s-wallpaper-design-pink-blossom-red.jpg",
+   "thumb": "thumb/s-wallpaper-design-pink-blossom-red.jpg",
+   "source": "Design for Wallpaper and Textiles: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-15"
+  },
+  {
+   "id": "sun:wallpaper-design-wallflowers-yellow",
+   "title": "Wallpaper design wallflowers",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-wallpaper-design-wallflowers-yellow.jpg",
+   "thumb": "thumb/s-wallpaper-design-wallflowers-yellow.jpg",
+   "source": "Design for Wallpaper and Textile: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-11"
+  },
+  {
+   "id": "sun:wallpaper-design-wildflowers-yellow",
+   "title": "Wallpaper design wildflowers",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-wallpaper-design-wildflowers-yellow.jpg",
+   "thumb": "thumb/s-wallpaper-design-wildflowers-yellow.jpg",
+   "source": "Design for Wallpaper and Textile: Flowers, 19th century, France",
+   "page": "https://www.si.edu/object/chndm_1968-107-1"
+  },
+  {
+   "id": "sun:wisteria-on-trellis-purple",
+   "title": "Wisteria on trellis",
+   "kind": "sun",
+   "ink": "purple",
+   "file": "full/s-wisteria-on-trellis-purple.jpg",
+   "thumb": "thumb/s-wisteria-on-trellis-purple.jpg",
+   "source": "Sidewall, 1902, Buffalo, New York, USA",
+   "page": "https://www.si.edu/object/chndm_1971-58-9-a_b"
+  },
+  {
+   "id": "sun:woodblock-pomegranate-design-yellow",
+   "title": "Woodblock pomegranate design",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-woodblock-pomegranate-design-yellow.jpg",
+   "thumb": "thumb/s-woodblock-pomegranate-design-yellow.jpg",
+   "source": "Design for Woodblock Textile Print, ca. 1790, Flanders",
+   "page": "https://www.si.edu/object/chndm_1956-35-1"
+  },
+  {
+   "id": "sun:yellow-roses-wallpaper-yellow",
+   "title": "Yellow roses wallpaper",
+   "kind": "sun",
+   "ink": "yellow",
+   "file": "full/s-yellow-roses-wallpaper-yellow.jpg",
+   "thumb": "thumb/s-yellow-roses-wallpaper-yellow.jpg",
+   "source": "Sidewall, 1905–1915, USA",
+   "page": "https://www.si.edu/object/chndm_1979-91-1174"
+  }
+ ]
+}
