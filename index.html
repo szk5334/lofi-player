@@ -500,6 +500,10 @@ const CFG = {
    drives both. The picture lives in the texture named "flora".
    ═══════════════════════════════════════════════════════════════════ */
 
+// Bloom Chintz melts to the next paper on this cycle; the player keeps time with it.
+const DUO_PERIOD = 30;
+const DUO_PRESET = 'Floral · Bloom Chintz';
+
 const FLORAL_PRESETS = (() => {
   const off = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '' }));
   const offW = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '', point_eqs_eel: '' }));
@@ -538,7 +542,7 @@ const FLORAL_PRESETS = (() => {
     init_eqs_eel: o.init || 'avg = 1; last = 0; pulse = 0;',
     frame_eqs_eel: BEAT + '\n' + (o.frame || ''),
     pixel_eqs_eel: o.pixel || '',
-    warp: `uniform sampler2D sampler_flora;\n shader_body {\n  ${PIC}\n${o.warp}\n }`,
+    warp: `uniform sampler2D sampler_flora;\n${o.head || ''}\n shader_body {\n  ${PIC}\n${o.warp}\n }`,
     comp: ` shader_body {\n${o.comp || '  vec3 c = texture(sampler_main, uv).xyz;'}\n${finish(o.glow)}\n }`
   });
 
@@ -553,6 +557,45 @@ const FLORAL_PRESETS = (() => {
       warp: `  vec3 fb = texture(sampler_main, uv).xyz;
   vec3 pic = texture(sampler_flora, pu).xyz;
   ret = mix(fb * 0.997, pic, q1);`
+    }),
+
+    // Bloom's outward petal trails over Liquid Chintz's marbled flow. Every
+    // DUO_PERIOD seconds the paper in one slot melts, in patches, into the
+    // paper in the other slot (the player keeps the hidden slot loaded with
+    // the next one), then the flow eases off and the new paper comes clear.
+    'Floral · Bloom Chintz': make({
+      base: { zoom: 1.006, warp: 0.05 },
+      init: 'avg = 1; last = 0; pulse = 0;',
+      frame: `per = ${DUO_PERIOD};
+  cyc = floor(time / per);
+  phs = time / per - cyc;
+  mt = min(max((phs - 0.62) / 0.38, 0), 1);
+  mt = mt * mt * (3 - 2 * mt);
+  melt = 4 * mt * (1 - mt);
+  q9 = mt;
+  q10 = cyc % 2;
+  q8 = 0.35 + 2.4 * melt;
+  zoom = 1.004 + 0.014 * min(max(bass_att - 0.9, 0), 1.2);
+  rot = 0.0025 * sin(time * 0.11);
+  q1 = 0.08 - 0.055 * melt + 0.045 * q3;`,
+      pixel: 'zoom = zoom + 0.006 * rad * q3;',
+      head: 'uniform sampler2D sampler_flora2;',
+      warp: `  vec2 n = texture(sampler_noise_lq, uv * 0.07 + vec2(time * 0.011, time * 0.007)).xy - 0.5;
+  vec2 m2 = texture(sampler_noise_lq, uv * 0.19 - vec2(time * 0.017, 0.0)).xy - 0.5;
+  vec2 flow = (n * 0.008 + m2 * 0.004) * q8;
+  vec3 fb = texture(sampler_main, uv + flow).xyz;
+  // patchy dissolve from the showing paper into the next one
+  float nz = texture(sampler_noise_lq, uv_orig * 0.045 + vec2(0.37, time * 0.004)).x;
+  float wt = smoothstep(nz * 0.6, nz * 0.6 + 0.4, q9);
+  vec2 pw = pu + flow * 2.5;
+  vec3 A = texture(sampler_flora, pw).xyz;
+  vec3 B = texture(sampler_flora2, pw).xyz;
+  vec3 pic = mix(A, B, q10 < 0.5 ? wt : 1.0 - wt);
+  ret = mix(fb * 0.997, pic, q1);`,
+      comp: `  vec3 c = texture(sampler_main, uv).xyz;
+  vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
+  c += 0.16 * b2 * (0.6 + 0.4 * q2);`,
+      glow: 0.4
     }),
 
     // The paper is pulled into a slow spiral that tightens toward the centre.
@@ -1318,7 +1361,9 @@ function pickPreset() {
 
 function restartCycle() {
   clearInterval(cycle); cycle = null;
-  if (viz && autoCycle) cycle = setInterval(() => roll(CFG.blend), CFG.presetHold);
+  // Bloom Chintz stays for two and a half of its melt cycles, so you see it melt twice.
+  const hold = current === DUO_PRESET ? DUO_PERIOD * 2500 : CFG.presetHold;
+  if (viz && autoCycle) cycle = setInterval(() => roll(CFG.blend), hold);
 }
 
 function showPreset(k, blend = 2.5) {
@@ -1327,6 +1372,8 @@ function showPreset(k, blend = 2.5) {
   document.body.classList.toggle('viz-floral', isFloral(k));
   document.body.classList.toggle('viz-kaleido', isKaleido(k));
   if (isFloral(k) && !curPic && pics.length) showPicture(pickPic());
+  if (viz && k === DUO_PRESET) startDuo();
+  else if (isFloral(k) && curPic && slots[0].pic !== curPic) loadSlot(0, curPic);
   paintVizBar();
   markNowVisual();
   if (!viz) return;                 // remembered; loads once playback starts
@@ -1548,7 +1595,7 @@ document.addEventListener('keydown', e => {
    ═══════════════════════════════════════════════════════════════════ */
 
 const PICS_URL = new URL(CFG.pictures, location.href).href;
-let pics = [], picById = new Map(), curPic = null, picImg = null, picCycle = null;
+let pics = [], picById = new Map(), curPic = null, picCycle = null;
 const pvotes  = store.get('nd.picvotes', {});
 const pfilter = Object.assign({ up: true, none: true, down: false }, store.get('nd.pfilter', {}));
 const ptype   = Object.assign({ color: true, sun: true }, store.get('nd.ptype', {}));
@@ -1577,47 +1624,95 @@ function pickPic() {
   return live[Math.floor(Math.random() * live.length)];
 }
 
-// Cover-fit the paper to the screen's shape, so the shaders can sample it 1:1.
-const picCanvas = document.createElement('canvas');
-function cropPic() {
-  if (!picImg) return false;
+/* Two picture slots, textures "flora" and "flora2". Most florals read only
+   slot 0. Bloom Chintz reads both and melts from one into the other on its
+   own DUO_PERIOD clock, so the slot that isn't on screen is kept loaded
+   with the next paper. */
+const slots = [
+  { tex: 'flora',  pic: null, img: null, cycle: -1, canvas: document.createElement('canvas') },
+  { tex: 'flora2', pic: null, img: null, cycle: -1, canvas: document.createElement('canvas') }
+];
+
+// Cover-fit a paper to the screen's shape, so the shaders can sample it 1:1.
+function cropInto(sl) {
+  const img = sl.img;
+  if (!img) return false;
   const [w, h] = vizSize();
   const s = Math.min(1, 1024 / Math.max(w, h));
   const W = Math.max(2, Math.round(w * s)), H = Math.max(2, Math.round(h * s));
-  picCanvas.width = W; picCanvas.height = H;
-  const k = Math.max(W / picImg.naturalWidth, H / picImg.naturalHeight);
-  const dw = picImg.naturalWidth * k, dh = picImg.naturalHeight * k;
-  picCanvas.getContext('2d').drawImage(picImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  sl.canvas.width = W; sl.canvas.height = H;
+  const k = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+  const dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+  sl.canvas.getContext('2d').drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
   return true;
 }
+const cropPic = () => slots.map(cropInto).some(Boolean);
 
 // Butterchurn only adds named textures once, so swap the pixels in place.
-function uploadPic() {
-  if (!viz || !picImg) return;
+function uploadSlot(sl) {
+  if (!viz || !sl.img) return;
   try {
     const I = viz.renderer.image;
-    if (!I.samplers.flora) I.samplers.flora = I.gl.createTexture();
-    I.bindTexture(I.samplers.flora, picCanvas, picCanvas.width, picCanvas.height);
+    if (!I.samplers[sl.tex]) I.samplers[sl.tex] = I.gl.createTexture();
+    I.bindTexture(I.samplers[sl.tex], sl.canvas, sl.canvas.width, sl.canvas.height);
   } catch (e) { console.warn('picture upload:', e); }
+}
+const uploadPic = () => slots.forEach(uploadSlot);
+
+function loadSlot(i, p, cycle = -1) {
+  const sl = slots[i];
+  if (!p) return;
+  sl.pic = p; sl.cycle = cycle;
+  const img = new Image();
+  img.onload = () => { if (sl.pic !== p) return; sl.img = img; cropInto(sl); uploadSlot(sl); };
+  img.onerror = () => console.warn('picture failed:', p.url);
+  img.src = p.url;
+}
+
+// Where Bloom Chintz is in its cycle: which slot is on screen, how far along.
+// It reads the visualizer's own clock, the same `time` the preset sees.
+function duoClock() {
+  const t = viz?.renderer?.time ?? 0;
+  const cyc = Math.floor(t / DUO_PERIOD);
+  return { cyc, s: cyc % 2, ph: t / DUO_PERIOD - cyc };
 }
 
 function showPicture(p) {
   if (!p) return;
   curPic = p;
   paintPicBar(); markNowPic();
-  const img = new Image();
-  img.onload = () => { if (curPic !== p) return; picImg = img; cropPic(); uploadPic(); };
-  img.onerror = () => console.warn('picture failed:', p.url);
-  img.src = p.url;
+  if (viz && current === DUO_PRESET) { const { cyc, s } = duoClock(); loadSlot(s, p, cyc); }
+  else loadSlot(0, p);
   restartPicCycle();
 }
 
 function restartPicCycle() {
   clearInterval(picCycle); picCycle = null;
   if (picAuto) picCycle = setInterval(() => {
-    if (viz && isFloral(current) && !document.hidden) showPicture(pickPic());
+    if (viz && isFloral(current) && current !== DUO_PRESET && !document.hidden) showPicture(pickPic());
   }, CFG.picHold);
 }
+
+// Bloom Chintz keeper: the on-screen slot holds this cycle's paper, the
+// hidden slot the next one, and the bar follows whichever is showing.
+function startDuo() {
+  if (!viz) return;
+  const { cyc, s } = duoClock();
+  if (slots[s].pic !== curPic || !slots[s].img) loadSlot(s, curPic || pickPic(), cyc);
+  else slots[s].cycle = cyc;
+  loadSlot(1 - s, picAuto ? pickPic() : (curPic || pickPic()), cyc + 1);
+}
+setInterval(() => {
+  if (!viz || current !== DUO_PRESET || document.hidden || !pics.length) return;
+  const { cyc, s, ph } = duoClock();
+  const vis = slots[s], hid = slots[1 - s];
+  if (!vis.pic) loadSlot(s, curPic || pickPic(), cyc);
+  if (hid.cycle !== cyc + 1 && (ph < 0.55 || !hid.img)) {
+    loadSlot(1 - s, picAuto ? pickPic() : (vis.pic || curPic), cyc + 1);
+  }
+  const showing = ph > 0.82 ? hid.pic : vis.pic;
+  if (showing && showing !== curPic) { curPic = showing; paintPicBar(); markNowPic(); }
+}, 400);
 
 function paintPicBar() {
   const row = $('vb-pic-row');
