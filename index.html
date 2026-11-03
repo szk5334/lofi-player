@@ -81,6 +81,9 @@ html,body{margin:0;height:100%;background:var(--ink);color:var(--paper);
 #viz,#viz-tone{transition:filter 2.5s ease,background-color 2.5s ease}
 body.viz-floral #viz{filter:brightness(.9) saturate(.96) contrast(1.04)}
 body.viz-floral #viz-tone{background:rgba(20,22,28,.1)}
+/* Kaleido visuals are neon glass; let them through almost untouched. */
+body.viz-kaleido #viz{filter:brightness(.97) saturate(1.04) contrast(1.03)}
+body.viz-kaleido #viz-tone{background:rgba(20,22,28,.04)}
 #viz-shade{position:fixed;inset:0 0 auto 0;height:calc(var(--top)*2.2);z-index:1;
   pointer-events:none;background:linear-gradient(to bottom,
     rgba(20,22,28,.88) 0%,rgba(20,22,28,.55) 45%,rgba(20,22,28,0) 100%)}
@@ -470,7 +473,6 @@ const CFG = {
   // Floral Deck papers, melted into the Floral visuals (in this repo, floral/)
   pictures: 'floral/floral.json',
   picHold: 40000,      // ms before the next picture, while a Floral visual is up
-  floralShare: 0.5,    // with Floral and Classic both on, how often a Floral one is picked
 
   presetHold: 22000,   // ms before drifting to the next preset
   blend: 5.5,          // seconds of crossfade between presets
@@ -668,6 +670,188 @@ const FLORAL_PRESETS = (() => {
   };
 })();
 const isFloral = k => k.startsWith('Floral · ');
+/* ═══════════════════════════════════════════════════════════════════
+   Kaleido visuals: procedural dichroic-glass mandalas, no pictures.
+
+   Every layer is drawn in mirror-folded polar space, so the whole
+   thing is N-fold symmetric:
+     core    a geodesic glass sphere (triangle lattice on a sphere)
+     rays    needle-thin spokes
+     rings   bead rings in log-polar space, streaming outward (q4)
+     shards  two triangle lattices of glass panes, thin-film colours
+     stars   four-point sparkles in red / gold / green / magenta
+   The warp shader keeps the brightest of (new pattern, last frame
+   zoomed out), which streaks light outward; the comp shader adds
+   bloom and a little chromatic dispersion, like cut glass.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const KALEIDO_PRESETS = (() => {
+  const off = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '' }));
+  const offW = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '', point_eqs_eel: '' }));
+  const f = x => (Number.isInteger(x) ? x.toFixed(1) : String(x));
+  const v3 = a => `vec3(${a.map(f).join(', ')})`;
+
+  const HEAD = `
+float h21(vec2 p) { p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }
+vec3 film(float t) { return 0.5 + 0.5 * cos(6.2831853 * (t + vec3(0.0, 0.33, 0.67))); }
+// triangle lattice: x = distance to the nearest edge, yzw = which cell
+vec4 tri(vec2 q) {
+  float u = dot(q, vec2(1.0, 0.0)), v = dot(q, vec2(0.5, 0.8660254)), w = dot(q, vec2(-0.5, 0.8660254));
+  float d = min(min(abs(u - floor(u + 0.5)), abs(v - floor(v + 0.5))), abs(w - floor(w + 0.5)));
+  return vec4(d, floor(u), floor(v), floor(w));
+}
+mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+`;
+
+  const make = (o) => {
+    const warp = `${HEAD}
+ shader_body {
+  vec2 p = (uv_orig - 0.5) * aspect.xy * ${f(o.fit)};
+  float r = length(p) + 1e-4;
+  float a = atan(p.y, p.x) + q5;
+  float seg = 6.2831853 / ${f(o.n)};
+  float af = abs(mod(a, seg) - 0.5 * seg);
+  vec2 fp = vec2(cos(af), sin(af)) * r;
+  float lr = log(r);
+  float tun = lr * ${f(o.rings)} - q4;
+  float en = q2, beat = q3, tw = q6;
+  vec3 base = ${v3(o.base)};
+  vec3 col = vec3(0.008, 0.014, 0.04) * (1.0 - smoothstep(0.2, 0.8, r));
+
+  float R = ${f(o.core)} * (1.0 + 0.1 * beat);
+  float outCore = smoothstep(R * 0.92, R * 1.5, r);
+
+  // rays
+  float ray = pow(abs(cos(af * ${f(o.rayk)})), 70.0) + 0.6 * pow(abs(cos(af * ${f(o.rayk * 2)} + 1.3)), 160.0);
+  ray *= 0.8 * outCore * (0.5 + 0.5 * sin(tun * 3.1416 + 1.0)) * (1.0 - smoothstep(0.55, 0.95, r));
+  col += ray * mix(base, film(af * 3.0 + q4 * 0.04 + 0.5), ${f(o.filmMix)}) * (0.55 + 0.55 * en);
+
+  // bead rings
+  vec2 bc = vec2(fract(tun) - 0.5, fract(af / seg * ${f(o.beads * 2)}) - 0.5);
+  float ring = smoothstep(0.05, 0.0, abs(fract(tun) - 0.5));
+  float bead = smoothstep(0.24, 0.12, length(bc * vec2(1.0, 1.4)));
+  float bead2 = smoothstep(0.08, 0.0, length(bc - vec2(0.0, 0.0))) ;
+  vec3 beadC = mix(film(floor(tun) * 0.21 + 0.55), base, 0.35);
+  col += (ring * 0.35 + bead * 0.65 + bead2 * 0.8) * beadC * outCore * (0.7 + 0.5 * en);
+
+  // glass shards: two lattices, panes catch thin-film colour
+  vec4 t1 = tri(rot2(q4 * 0.05) * fp * ${f(o.sh1)} + vec2(0.0, -q4 * 0.35));
+  float e1 = smoothstep(0.045, 0.0, t1.x);
+  float id1 = h21(t1.yz + t1.w * 7.13);
+  vec3 c1 = mix(film(id1 + af * 0.8 + q4 * 0.03), base, ${f(o.tint)});
+  float pane1 = 0.13 * step(0.62, id1) * (0.6 + 0.4 * sin(time * 1.3 + id1 * 30.0));
+  float band1 = smoothstep(R, R * 1.4, r) * (1.0 - smoothstep(0.38, 0.62, r));
+  col += (e1 * 0.75 + pane1) * c1 * band1;
+
+  vec4 t2 = tri(rot2(-q4 * 0.03 + 0.5) * fp * ${f(o.sh2)});
+  float e2 = smoothstep(0.06, 0.0, t2.x);
+  float id2 = h21(t2.yz * 1.7 + t2.w);
+  vec3 c2 = mix(film(id2 * 0.7 + 0.15 + lr * 0.3), base, 0.3);
+  float band2 = smoothstep(0.28, 0.42, r) * (1.0 - smoothstep(0.7, 1.0, r));
+  col += (e2 * 0.5 + 0.07 * step(0.74, id2)) * c2 * band2;
+
+  // stars
+  vec2 sc = vec2(tun * 2.6, af / seg * ${f(o.stars)});
+  vec2 cid = floor(sc);
+  vec2 d = fract(sc) - 0.5 - (vec2(h21(cid + 3.1), h21(cid + 9.7)) - 0.5) * 0.5;
+  float hs = h21(cid + 17.0);
+  float star = 1.6 * (0.0025 / (abs(d.x * d.y) + 0.0025)) * smoothstep(0.42, 0.0, length(d)) + smoothstep(0.07, 0.0, length(d)) * 2.0;
+  star *= step(${f(o.starCut)}, hs) * outCore;
+  float pick = fract(hs * 13.7);
+  vec3 sCol = pick < 0.25 ? vec3(1.0, 0.18, 0.12) : pick < 0.5 ? vec3(1.0, 0.82, 0.15)
+            : pick < 0.75 ? vec3(0.25, 1.0, 0.35) : vec3(1.0, 0.25, 0.85);
+  float twinkle = 0.45 + 0.55 * sin(time * (3.0 + 4.0 * hs) + hs * 40.0) * (0.6 + 0.6 * tw);
+  col += star * sCol * max(twinkle, 0.15);
+
+  // geodesic glass core
+  float z = sqrt(max(R * R - r * r, 1e-5));
+  vec2 s = rot2(q5 * 2.0 + time * 0.05) * p / (z + 0.25 * R) * ${f(o.coreTiles)};
+  vec4 tc = tri(s);
+  float aa = fwidth(tc.x) * 1.2;
+  float ec = smoothstep(0.05 + aa, 0.0, tc.x) * (1.0 - 0.6 * smoothstep(0.75, 1.0, r / R));
+  float idc = h21(tc.yz + tc.w * 3.3);
+  vec3 cc = mix(film(idc + q4 * 0.02), vec3(0.55, 0.8, 1.0), 0.45) * (0.06 + 0.34 * step(0.62, idc));
+  vec3 core = cc + ec * mix(vec3(0.82, 0.95, 1.0), film(idc + time * 0.1), 0.25) * (1.0 + 0.3 * beat);
+  core += film(idc * 3.0) * pow(h21(tc.yz + floor(time * 4.0)), 24.0) * 1.5;
+  core += vec3(0.85, 0.93, 1.0) * exp(-r * r / (R * R * 0.018)) * (0.8 + 0.6 * beat);
+  float rim = smoothstep(0.012, 0.0, abs(r - R)) * 0.9;
+  float m = smoothstep(R, R * 0.97, r);
+  col = mix(col, core, m) + rim * mix(base, vec3(1.0), 0.5);
+
+  // outer light-chase streaks
+  float outer = smoothstep(0.45, 0.95, r);
+  col += outer * film(a / 6.2831853 + 0.62 + q4 * 0.01) * 0.3 * pow(abs(cos(a * 9.0 + lr * 1.5)), 6.0);
+
+  vec3 fb = texture(sampler_main, uv).xyz;
+  ret = max(fb * ${f(o.trail)}, col);
+ }`;
+
+    const comp = ` shader_body {
+  vec2 d = uv - 0.5;
+  float k = 0.0035 + 0.004 * q3;
+  vec3 c;
+  c.r = texture(sampler_main, uv + d * k).r;
+  c.g = texture(sampler_main, uv).g;
+  c.b = texture(sampler_main, uv - d * k).b;
+  vec3 b1 = texture(sampler_blur1, uv).xyz * scale1 + bias1;
+  vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
+  c += b1 * 0.22 + b2 * (0.1 + 0.12 * q2);
+  c = pow(c, vec3(1.18));
+  c = c / (1.0 + 0.2 * c);
+  float l = dot(c, vec3(0.3, 0.59, 0.11));
+  c = mix(vec3(l), c, 1.25);
+  c *= mix(0.4, 1.0, smoothstep(0.9, 0.3, length(d * vec2(1.0, 1.1))));
+  ret = clamp(c, 0.0, 1.0);
+ }`;
+
+    return {
+      version: 2,
+      baseVals: {
+        rating: 5, gammaadj: 1, decay: 1, wave_a: 0, wave_scale: 0.1, modwavealphastart: 0, modwavealphaend: 0,
+        ob_size: 0, ob_a: 0, ib_size: 0, ib_a: 0, mv_a: 0, mv_l: 0,
+        zoom: 1.01, rot: 0, warp: 0, warpscale: 1, warpanimspeed: 1, wrap: 0, darken_center: 0
+      },
+      shapes: off(), waves: offW(),
+      init_eqs_eel: 'avg = 1; last = 0; pulse = 0; ph = 0; spin = 0;',
+      frame_eqs_eel: `
+  e = (bass_att + mid_att + treb_att) / 3;
+  avg = avg * 0.985 + e * 0.015;
+  hit = above(bass, avg * 1.32 + 0.12) * above(time, last + 0.28);
+  last = if(hit, time, last);
+  pulse = max(pulse * 0.9, hit);
+  q2 = min(max(e, 0.2), 2.5);
+  q3 = pulse;
+  ph = ph + (${f(o.speed)} + ${f(o.speed * 1.6)} * min(max(q2 - 0.6, 0), 1.6) + 0.35 * pulse) / max(fps, 15);
+  q4 = ph;
+  spin = spin + (${f(o.spin)} + ${f(o.spin * 1.5)} * pulse) / max(fps, 15);
+  q5 = spin;
+  q6 = min(treb_att, 2);
+  zoom = 1.006 + 0.012 * pulse + 0.004 * min(q2, 2);`,
+      pixel_eqs_eel: '',
+      warp, comp
+    };
+  };
+
+  return {
+    // The reference look: cyan-blue core and rays, rainbow panes, neon stars.
+    'Kaleido · Light Chase': make({
+      n: 12, fit: 1.0, rings: 3.2, rayk: 48, beads: 2, stars: 5, starCut: 0.58, core: 0.15, coreTiles: 7,
+      sh1: 11, sh2: 19, trail: 0.8, speed: 0.22, spin: 0.02, base: [0.1, 0.45, 1.0], filmMix: 0.22, tint: 0.5
+    }),
+    // Warmer and more iridescent: magenta, gold and teal glass, eight-fold.
+    'Kaleido · Dichroic Bloom': make({
+      n: 8, fit: 1.0, rings: 2.6, rayk: 40, beads: 3, stars: 4, starCut: 0.66, core: 0.19, coreTiles: 6,
+      sh1: 8, sh2: 14, trail: 0.82, speed: 0.16, spin: -0.015, base: [0.95, 0.3, 0.75], filmMix: 0.65, tint: 0.15
+    }),
+    // A slow rose window: sixteen-fold, violet and amber, calmer.
+    'Kaleido · Cathedral': make({
+      n: 16, fit: 0.9, rings: 4.0, rayk: 64, beads: 2, stars: 6, starCut: 0.68, core: 0.12, coreTiles: 8,
+      sh1: 14, sh2: 24, trail: 0.78, speed: 0.1, spin: 0.008, base: [0.5, 0.28, 1.0], filmMix: 0.4, tint: 0.35
+    })
+  };
+})();
+const isKaleido = k => k.startsWith('Kaleido · ');
+
 
 /* ═══════════════════════════════════════════════════════════════════
    Shared helpers
@@ -752,9 +936,10 @@ function presetPool() {
   if (window.extra?.default) Object.assign(all, window.extra.default);
   return all;
 }
-const presets = Object.assign(presetPool(), FLORAL_PRESETS);
+const presets = Object.assign(presetPool(), FLORAL_PRESETS, KALEIDO_PRESETS);
+const kindRank = k => isFloral(k) ? 0 : isKaleido(k) ? 1 : 2;
 const presetKeys = Object.keys(presets).sort((a, b) =>
-  (isFloral(b) - isFloral(a)) || a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  (kindRank(a) - kindRank(b)) || a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
 function vizSize() {
   const dpr = Math.min(devicePixelRatio || 1, 1.75);
@@ -791,8 +976,10 @@ const BANS = 'nd.banned';
 const banned = new Set(store.get(BANS, []));
 const saveBans = () => store.set(BANS, [...banned]);
 
-const vtype = Object.assign({ floral: true, classic: true }, store.get('nd.vtype', {}));
-const typeOf = k => isFloral(k) ? 'floral' : 'classic';
+const VKINDS = ['floral', 'kaleido', 'classic'];
+const VKIND_LABEL = { floral: 'Floral', kaleido: 'Kaleido', classic: 'Classic' };
+const vtype = Object.assign({ floral: true, kaleido: true, classic: true }, store.get('nd.vtype', {}));
+const typeOf = k => isFloral(k) ? 'floral' : isKaleido(k) ? 'kaleido' : 'classic';
 // Florals need the pictures; without them they'd only show the stock cloud texture.
 const vAllowed = k => vtype[typeOf(k)] && (!isFloral(k) || pics.length > 0) &&
                       vfilter[catOf(vVoteOf(k))] && !banned.has(k);
@@ -800,11 +987,10 @@ const vAllowed = k => vtype[typeOf(k)] && (!isFloral(k) || pics.length > 0) &&
 function pickPreset() {
   let live = presetKeys.filter(k => k !== current && vAllowed(k));
   if (!live.length) live = presetKeys.filter(vAllowed);
-  // With both kinds on, the nine florals get a fair share instead of 9 in 116.
-  if (vtype.floral && vtype.classic) {
-    const fl = live.filter(isFloral), cl = live.filter(k => !isFloral(k));
-    if (fl.length && cl.length) live = Math.random() < CFG.floralShare ? fl : cl;
-  }
+  // Each kind that's on gets an equal share, so 9 florals and 3 kaleidos
+  // aren't buried under 107 classics.
+  const kinds = VKINDS.map(t => live.filter(k => typeOf(k) === t)).filter(g => g.length);
+  if (kinds.length > 1) live = kinds[Math.floor(Math.random() * kinds.length)];
   if (!live.length) live = presetKeys.filter(k => !banned.has(k) && vVoteOf(k) >= 0);
   if (!live.length) live = presetKeys.filter(k => !banned.has(k));
   if (!live.length) { banned.clear(); saveBans(); live = presetKeys; }
@@ -820,6 +1006,7 @@ function showPreset(k, blend = 2.5) {
   if (!k || !presets[k]) return;
   current = k;
   document.body.classList.toggle('viz-floral', isFloral(k));
+  document.body.classList.toggle('viz-kaleido', isKaleido(k));
   if (isFloral(k) && !curPic && pics.length) showPicture(pickPic());
   paintVizBar();
   markNowVisual();
@@ -900,8 +1087,8 @@ function runLoop() {
     if (now < settled || now - checked < CFG.checkEvery) return;
     checked = now;
 
-    // Florals are exempt: the papers' cream grounds are meant to be light.
-    if (brightness() * 0.72 > CFG.maxBrightness && vVoteOf(current) <= 0 && !isFloral(current)) {
+    // Florals and kaleidos are exempt: they're built to be bright, and tone themselves.
+    if (brightness() * 0.72 > CFG.maxBrightness && vVoteOf(current) <= 0 && typeOf(current) === 'classic') {
       if (++hot >= 2) {
         banned.add(current); saveBans();
         console.info('nightdeck: too bright —', current);
@@ -1693,18 +1880,17 @@ function renderVisuals() {
 
   const c = countBy(presetKeys, vVoteOf);
   c.bright = banned.size;
-  const tc = { floral: presetKeys.filter(isFloral).length, classic: presetKeys.filter(k => !isFloral(k)).length };
+  const tc = Object.fromEntries(VKINDS.map(t => [t, presetKeys.filter(k => typeOf(k) === t).length]));
   const showing = presetKeys.filter(vAllowed).length;
   paneV.innerHTML = `<div class="lb">${sub}
     <div class="lb-sec">
       <span class="lb-label">Show from</span>
       <div class="lb-row">${chips(CATS, 'data-vf', k => vfilter[k], c)}</div>
       <div class="lb-row" style="margin-top:.4rem">
-        <button class="chip" data-vt="floral" aria-pressed="${vtype.floral}">Floral<span class="n">${tc.floral}</span></button>
-        <button class="chip" data-vt="classic" aria-pressed="${vtype.classic}">Classic<span class="n">${tc.classic}</span></button>
+        ${VKINDS.map(t => `<button class="chip" data-vt="${t}" aria-pressed="${vtype[t]}">${VKIND_LABEL[t]}<span class="n">${tc[t]}</span></button>`).join('')}
         <button class="chip" data-cycle aria-pressed="${autoCycle}">Auto-change</button>
       </div>
-      <p class="lb-help">Rotating through ${plural(showing, 'visual')}${autoCycle ? `, a new one every ${Math.round(CFG.presetHold / 1000)}s` : '; auto-change is off, so the current one stays'}${vtype.floral && vtype.classic ? ', about half of them Floral' : ''}. Tap the visualizer for its rating bar; double-tap for the next one; press and hold for thumbs down.</p>
+      <p class="lb-help">Rotating through ${plural(showing, 'visual')}${autoCycle ? `, a new one every ${Math.round(CFG.presetHold / 1000)}s` : '; auto-change is off, so the current one stays'}${VKINDS.filter(t => vtype[t]).length > 1 ? '; each kind you have on gets an equal share' : ''}. Tap the visualizer for its rating bar; double-tap for the next one; press and hold for thumbs down.</p>
     </div>
     <div class="lb-sec">
       <span class="lb-label">Browse</span>
@@ -1734,7 +1920,8 @@ function fillVisuals() {
       <button class="lb-play" data-show>
         <span class="lb-dot" aria-hidden="true"></span>
         <span class="lb-txt"><span class="lb-t">${esc(k)}</span>
-          ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : isFloral(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">floral · melts the pictures</span></span>' : ''}</span>
+          ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : isFloral(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">floral · melts the pictures</span></span>'
+          : isKaleido(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">kaleido · dichroic glass</span></span>' : ''}</span>
       </button>
       ${voteButtons(vVoteOf(k), 'data-vvote', k)}
     </li>`).join('')
@@ -1787,7 +1974,7 @@ paneV.addEventListener('click', e => {
 
   // visuals
   if (d.vf) { if (flip(vfilter, d.vf, CATS, 'nd.vfilter')) { if (viz && current && !vAllowed(current)) roll(2.5); refreshVisuals(); } return; }
-  if (d.vt) { if (flip(vtype, d.vt, ['floral', 'classic'], 'nd.vtype')) { if (viz && current && !vAllowed(current)) roll(2.5); refreshVisuals(); } return; }
+  if (d.vt) { if (flip(vtype, d.vt, VKINDS, 'nd.vtype')) { if (viz && current && !vAllowed(current)) roll(2.5); refreshVisuals(); } return; }
   if ('cycle' in d) {
     autoCycle = !autoCycle; store.set('nd.vcycle', autoCycle);
     restartCycle(); refreshVisuals();
