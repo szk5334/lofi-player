@@ -851,6 +851,325 @@ mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
   };
 })();
 const isKaleido = k => k.startsWith('Kaleido · ');
+/* ═══════════════════════════════════════════════════════════════════
+   More Kaleido visuals, each modelled on a kind of collector
+   kaleidoscope or mandala tradition:
+     Oil Cell        two-mirror scope, lampworked dichroic glass drifting
+                     in an oil-filled cell, one mandala on black
+     Polarized       birefringent cellophane between crossed polarizers:
+                     interference colours, the polarizer slowly turning
+     Three-Mirror    equilateral three-mirror system: the pattern fills
+                     the whole field, reflected without end
+     Rose Window     a Gothic rose (Chartres-style): jewel glass, lead
+                     tracery, light pouring through
+     Girih           Islamic ten-fold star strapwork in lapis and gold
+     Millefiori      a wheel scope turning a wheel of Murano canes
+     Fractal         a fractal mandala: self-similar at every scale
+   ═══════════════════════════════════════════════════════════════════ */
+
+const KALEIDO2_PRESETS = (() => {
+  const off = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '' }));
+  const offW = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '', point_eqs_eel: '' }));
+
+  const HEAD = `
+float h21(vec2 p) { p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }
+float h11(float x) { return fract(sin(x * 127.1) * 43758.5453); }
+vec3 film(float t) { return 0.5 + 0.5 * cos(6.2831853 * (t + vec3(0.0, 0.33, 0.67))); }
+mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+vec4 tri(vec2 q) {
+  float u = dot(q, vec2(1.0, 0.0)), v = dot(q, vec2(0.5, 0.8660254)), w = dot(q, vec2(-0.5, 0.8660254));
+  float d = min(min(abs(u - floor(u + 0.5)), abs(v - floor(v + 0.5))), abs(w - floor(w + 0.5)));
+  return vec4(d, floor(u), floor(v), floor(w));
+}
+// fold an angle into one mirror wedge of an n-fold kaleidoscope
+vec2 kfold(vec2 p, float n, float spin) {
+  float a = atan(p.y, p.x) + spin;
+  float seg = 6.2831853 / n;
+  float af = abs(mod(a, seg) - 0.5 * seg);
+  return vec2(cos(af), sin(af)) * length(p);
+}
+// a piece of lampworked dichroic glass: rgb colour, a = coverage
+vec4 glassPiece(vec2 c, float i, float t) {
+  vec2 ctr = vec2(-0.05 + 1.0 * h11(i + 1.0), -0.15 + 0.45 * h11(i + 7.0))
+           + 0.22 * vec2(sin(t * (0.5 + 0.3 * h11(i)) + i * 1.7), cos(t * (0.4 + 0.3 * h11(i + 3.0)) + i * 2.3));
+  vec2 q = rot2(t * 0.3 * (h11(i + 5.0) - 0.5) + i) * (c - ctr);
+  float sz = 0.12 + 0.16 * h11(i + 11.0);
+  float kind = h11(i + 13.0);
+  float d = kind < 0.5 ? length(q * vec2(1.0, 1.6 + 1.6 * h11(i + 2.0))) - sz        // drop / ellipse
+                       : max(abs(q.x) + abs(q.y) * 0.6, abs(q.y) * 1.2) - sz;        // shard
+  float body = smoothstep(0.015, -0.015, d);
+  float rim  = smoothstep(0.025, 0.0, abs(d));
+  float swirl = 0.5 + 0.5 * sin(atan(q.y, q.x) * (3.0 + floor(4.0 * h11(i + 4.0))) + length(q) * 30.0 - t);
+  vec3 c0 = film(h11(i + 9.0) + d * 3.0 + t * 0.03);
+  vec3 col = c0 * (0.35 + 0.45 * swirl) + rim * film(h11(i + 9.0) + 0.4) * 1.4;
+  return vec4(col, max(body * 0.85, rim));
+}
+`;
+
+  const FRAME = `
+  e = (bass_att + mid_att + treb_att) / 3;
+  avg = avg * 0.985 + e * 0.015;
+  hit = above(bass, avg * 1.32 + 0.12) * above(time, last + 0.28);
+  last = if(hit, time, last);
+  pulse = max(pulse * 0.9, hit);
+  q2 = min(max(e, 0.2), 2.5);
+  q3 = pulse;
+  ph = ph + (SPEED + SPEED * 1.6 * min(max(q2 - 0.6, 0), 1.6) + 0.3 * pulse) / max(fps, 15);
+  q4 = ph;
+  spin = spin + (SPIN + SPIN * 1.5 * pulse) / max(fps, 15);
+  q5 = spin;
+  q6 = min(treb_att, 2);
+  zoom = ZOOM;`;
+
+  const comp = (bloom, disp, sat, vig) => ` shader_body {
+  vec2 d = uv - 0.5;
+  float k = ${disp.toFixed(4)} * (1.0 + q3);
+  vec3 c;
+  c.r = texture(sampler_main, uv + d * k).r;
+  c.g = texture(sampler_main, uv).g;
+  c.b = texture(sampler_main, uv - d * k).b;
+  vec3 b1 = texture(sampler_blur1, uv).xyz * scale1 + bias1;
+  vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
+  c += (b1 * 0.6 + b2 * 0.4) * ${bloom.toFixed(2)} * (0.8 + 0.3 * q2);
+  c = pow(max(c, 0.0), vec3(1.12));
+  c = c / (1.0 + 0.2 * c);
+  float l = dot(c, vec3(0.3, 0.59, 0.11));
+  c = mix(vec3(l), c, ${sat.toFixed(2)});
+  c *= mix(${vig.toFixed(2)}, 1.0, smoothstep(0.9, 0.3, length(d * vec2(1.0, 1.1))));
+  ret = clamp(c, 0.0, 1.0);
+ }`;
+
+  const make = ({ body, speed = 0.15, spin = 0.01, zoom = 1.0, bloom = 0.35, disp = 0.003, sat = 1.15, vig = 0.45 }) => ({
+    version: 2,
+    baseVals: {
+      rating: 5, gammaadj: 1, decay: 1, wave_a: 0, wave_scale: 0.1, modwavealphastart: 0, modwavealphaend: 0,
+      ob_size: 0, ob_a: 0, ib_size: 0, ib_a: 0, mv_a: 0, mv_l: 0,
+      zoom, rot: 0, warp: 0, warpscale: 1, warpanimspeed: 1, wrap: 0, darken_center: 0
+    },
+    shapes: off(), waves: offW(),
+    init_eqs_eel: 'avg = 1; last = 0; pulse = 0; ph = 0; spin = 0;',
+    frame_eqs_eel: FRAME.replace(/SPEED/g, speed.toFixed(3)).replace(/SPIN/g, spin.toFixed(4)).replace('ZOOM', String(zoom)),
+    pixel_eqs_eel: '',
+    warp: `${HEAD}
+ shader_body {
+  vec2 p = (uv_orig - 0.5) * aspect.xy;
+  float r = length(p) + 1e-4;
+  float en = q2, beat = q3, tw = q6;
+  vec3 col = vec3(0.0);
+  vec3 fb = texture(sampler_main, uv).xyz;
+${body}
+ }`,
+    comp: comp(bloom, disp, sat, vig)
+  });
+
+  // A round eyepiece window: black outside, a soft rim at the edge.
+  const WINDOW = (R) => `
+  float win = smoothstep(${R}, ${R} - 0.008, r);
+  col *= win;
+  col += smoothstep(0.006, 0.0, abs(r - ${R})) * vec3(0.35, 0.4, 0.5) * 0.6;`;
+
+  return {
+    'Kaleido · Oil Cell': make({
+      speed: 0.12, spin: 0.012, bloom: 0.4, disp: 0.003, sat: 1.2, vig: 0.6,
+      body: `
+  // 2M/8P: sixteen mirror wedges, one mandala floating on black
+  vec2 c = kfold(p, 16.0, q5) * 2.6;
+  float t = q4;
+  for (int i = 0; i < 8; i++) {
+    vec4 g = glassPiece(c, float(i) * 1.37, t);
+    col = mix(col, g.rgb, g.a * 0.8) + g.rgb * g.a * 0.12;
+  }
+  // tiny bubbles in the oil
+  vec2 bq = c * 9.0 + vec2(0.0, t * 0.6);
+  vec2 bi = floor(bq); vec2 bf = fract(bq) - 0.5;
+  col += smoothstep(0.08, 0.0, length(bf)) * step(0.93, h21(bi)) * vec3(0.8, 0.9, 1.0) * 0.6;
+  col *= 0.85 + 0.35 * beat;
+${WINDOW('0.46')}
+  ret = mix(col, fb, 0.35);`
+    }),
+
+    'Kaleido · Polarized': make({
+      speed: 0.1, spin: 0.006, bloom: 0.3, disp: 0.002, sat: 1.25, vig: 0.5,
+      body: `
+  // layered cellophane: each layer adds retardation where it covers
+  vec2 fp = kfold(p, 12.0, q5);
+  float rt = 0.0, ori = 0.0, crease = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float fi = float(i);
+    vec2 q = rot2(fi * 0.9 + q4 * 0.05 * (fi + 1.0)) * fp * (4.0 + fi * 2.7) + vec2(fi * 1.31, q4 * 0.12 * (fi - 1.5));
+    vec4 tt = tri(q);
+    float id = h21(tt.yz + tt.w * 1.7 + fi * 5.3);
+    float has = step(0.38, id);
+    rt += has * (0.28 + 0.55 * fract(id * 7.1));
+    ori += has * id * 3.14159;
+    crease += has * smoothstep(0.03, 0.0, tt.x);
+  }
+  // crossed polarizers: dark where there's nothing, Michel-Levy colours where there is
+  float pol = q4 * 0.35;
+  float s2 = pow(sin(2.0 * (ori - pol)), 2.0) * 0.85 + 0.15;
+  vec3 lam = vec3(0.65, 0.53, 0.45);
+  vec3 I = s2 * pow(abs(sin(3.14159 * rt / lam)), vec3(2.0));
+  col = I * (0.95 + 0.3 * en) * step(0.01, rt) + crease * 0.08;
+  col *= 1.0 - smoothstep(0.42, 0.62, r);
+  ret = max(col, fb * 0.4);`
+    }),
+
+    'Kaleido · Three-Mirror': make({
+      speed: 0.16, spin: 0.0, bloom: 0.35, disp: 0.0025, sat: 1.2, vig: 0.5,
+      body: `
+  // three mirrors in an equilateral triangle: reflect into it until inside
+  vec2 q = rot2(0.05 * sin(q4 * 0.2)) * p;
+  float ri = 0.11;
+  vec2 n0 = vec2(0.0, -1.0), n1 = vec2(0.8660254, 0.5), n2 = vec2(-0.8660254, 0.5);
+  for (int i = 0; i < 14; i++) {
+    float d0 = dot(q, n0) - ri; if (d0 > 0.0) q -= 2.0 * d0 * n0;
+    float d1 = dot(q, n1) - ri; if (d1 > 0.0) q -= 2.0 * d1 * n1;
+    float d2 = dot(q, n2) - ri; if (d2 > 0.0) q -= 2.0 * d2 * n2;
+  }
+  // the object wheel turning behind the mirrors
+  vec2 c = rot2(q4 * 0.6) * q * 3.2 + vec2(0.25, 0.05);
+  vec4 tg = tri(c * 2.3 + vec2(q4 * 0.2, 0.0));
+  col = film(h21(tg.yz + tg.w) * 0.6 + 0.55) * 0.18;                 // tinted glass ground
+  for (int i = 0; i < 9; i++) {
+    vec4 g = glassPiece(c * 1.1, float(i) * 2.11 + 3.0, q4 * 1.3);
+    col = mix(col, g.rgb, g.a * 0.75) + g.rgb * g.a * 0.1;
+  }
+  vec4 tt = tri(c * 1.7);
+  col += smoothstep(0.03, 0.0, tt.x) * film(h21(tt.yz) + q4 * 0.05) * 0.25;
+  float edge = min(min(abs(dot(q, n0) - ri), abs(dot(q, n1) - ri)), abs(dot(q, n2) - ri));
+  col += smoothstep(0.004, 0.0, edge) * 0.06;
+  col *= 0.85 + 0.3 * beat;
+  ret = max(col, fb * 0.5);`
+    }),
+
+    'Kaleido · Rose Window': make({
+      speed: 0.06, spin: 0.002, bloom: 0.55, disp: 0.0015, sat: 1.2, vig: 0.35,
+      body: `
+  float n = 12.0, seg = 6.2831853 / n;
+  float a = atan(p.y, p.x) + q5;
+  float wedge = floor(a / seg);
+  vec2 fp = kfold(p, n, q5);
+  vec2 f24 = kfold(p, 24.0, q5);
+  // tracery shapes: centre rosette, 12 petals, 24 roundels, 12 quatrefoils
+  float dC = r - 0.075;
+  float dP = length(fp - vec2(0.155, 0.0)) - 0.068;
+  float dR = length(f24 - vec2(0.285, 0.0)) - 0.043;
+  vec2 qf = fp - vec2(0.385, 0.0);
+  float dQ = min(min(length(qf - vec2(0.028, 0.0)), length(qf + vec2(0.028, 0.0))),
+                 min(length(qf - vec2(0.0, 0.028)), length(qf + vec2(0.0, 0.028)))) - 0.026;
+  float lead = min(min(abs(dC), abs(dP)), min(abs(dR), abs(dQ)));
+  lead = min(lead, min(abs(r - 0.225), abs(r - 0.345)));
+  lead = min(lead, abs(fp.y) + step(r, 0.075));                       // spokes on the mirror lines
+  vec4 tt = tri(fp * 20.0);
+  lead = min(lead, tt.x / 20.0 + 0.0015 * step(r, 0.075));           // the small panes of glass
+  // pick a jewel colour per region
+  float region = dC < 0.0 ? 0.0 : dP < 0.0 ? 1.0 : dR < 0.0 ? 2.0 : dQ < 0.0 ? 3.0 : 4.0 + step(0.225, r) + step(0.345, r);
+  float hid = h21(vec2(region, mod(wedge, 2.0)) + tt.yz * 0.013);
+  vec3 blue = vec3(0.07, 0.17, 0.62), ruby = vec3(0.68, 0.05, 0.09), green = vec3(0.05, 0.42, 0.2),
+       amber = vec3(0.9, 0.58, 0.12), violet = vec3(0.38, 0.1, 0.55);
+  vec3 g = region == 4.0 ? blue : region == 5.0 ? mix(blue, violet, step(0.5, hid)) :
+           region == 0.0 ? amber : region == 1.0 ? (hid < 0.5 ? ruby : blue) :
+           region == 2.0 ? (hid < 0.4 ? green : hid < 0.75 ? amber : ruby) : (hid < 0.5 ? violet : ruby);
+  g *= 0.75 + 0.5 * fract(hid * 13.3);
+  // seedy glass and light moving through it
+  float seedy = texture(sampler_noise_lq, uv_orig * 3.1).x;
+  float sun = 0.65 + 0.45 * sin(a * 2.0 - q4 * 2.0 + r * 6.0) * (0.5 + 0.5 * en) + 0.3 * beat;
+  col = g * (0.75 + 0.5 * seedy) * sun * 1.6;
+  col *= smoothstep(0.0015, 0.0045, lead);                            // lead came is dark
+  float stone = smoothstep(0.455, 0.465, r);
+  col = mix(col, vec3(0.05, 0.045, 0.04) * (0.6 + 0.5 * seedy), stone);
+  ret = mix(col, fb, 0.25);`
+    }),
+
+    'Kaleido · Girih': make({
+      speed: 0.08, spin: 0.004, bloom: 0.25, disp: 0.0012, sat: 1.1, vig: 0.4,
+      body: `
+  // ten-pointed star rosettes, nested, in lapis, turquoise and gold
+  float seg = 6.2831853 / 10.0;
+  float sc = 1.0 + 0.04 * beat;
+  vec2 fp = kfold(p, 10.0, q5) / sc;
+  float rr = length(fp);
+  vec2 hv = vec2(cos(0.5 * seg), sin(0.5 * seg));
+  float bits = 0.0, strap = 1.0;
+  // each star: tip radius, inner radius, tip on the 0 mirror (1) or the half-wedge mirror (0)
+  vec3 S[6];
+  S[0] = vec3(0.085, 0.045, 1.0); S[1] = vec3(0.15, 0.085, 0.0); S[2] = vec3(0.22, 0.13, 1.0);
+  S[3] = vec3(0.29, 0.19, 0.0);   S[4] = vec3(0.37, 0.25, 1.0);  S[5] = vec3(0.45, 0.33, 0.0);
+  for (int i = 0; i < 6; i++) {
+    vec2 T = S[i].z > 0.5 ? vec2(S[i].x, 0.0) : hv * S[i].x;
+    vec2 I = S[i].z > 0.5 ? hv * S[i].y : vec2(S[i].y, 0.0);
+    vec2 dir = normalize(I - T);
+    float dd = (fp - T).x * dir.y - (fp - T).y * dir.x;
+    bits += step(0.0, dd) * pow(2.0, float(i));
+    strap = min(strap, abs(dd));
+  }
+  float hid = h21(vec2(bits, 3.7));
+  vec3 lapis = vec3(0.06, 0.15, 0.55), turq = vec3(0.06, 0.55, 0.6), gold = vec3(0.95, 0.72, 0.26),
+       ivory = vec3(0.92, 0.88, 0.78), terra = vec3(0.65, 0.2, 0.1), deep = vec3(0.03, 0.05, 0.2);
+  vec3 tile = hid < 0.28 ? lapis : hid < 0.5 ? turq : hid < 0.62 ? terra : hid < 0.75 ? ivory * 0.8 : hid < 0.88 ? deep : gold * 0.75;
+  tile *= 0.8 + 0.3 * texture(sampler_noise_lq, uv_orig * 2.0).x;
+  float w = 0.0075;
+  float band = smoothstep(w, w - 0.0018, strap);
+  float outline = smoothstep(w + 0.0028, w, strap) - band;
+  float shine = 0.75 + 0.4 * sin(rr * 36.0 - q4 * 3.0) * (0.6 + 0.4 * en);
+  col = tile * (0.85 + 0.25 * en);
+  col = mix(col, gold * shine * 1.15, band);
+  col *= 1.0 - outline * 0.85;
+  col *= 1.0 - smoothstep(0.46, 0.48, rr * sc);
+  col += smoothstep(0.006, 0.0, abs(rr * sc - 0.47)) * gold * 0.8;
+  ret = col;`
+    }),
+
+    'Kaleido · Millefiori': make({
+      speed: 0.14, spin: 0.01, bloom: 0.3, disp: 0.002, sat: 1.15, vig: 0.55,
+      body: `
+  // a wheel scope: 6 points (12 wedges) looking at a turning wheel of Murano canes
+  vec2 fp = kfold(p, 12.0, q5);
+  vec2 w = rot2(q4 * 0.5) * (fp - vec2(0.12, 0.0)) * 24.0;
+  w.x += 0.5 * mod(floor(w.y), 2.0);                                   // staggered rows
+  vec2 id = floor(w);
+  vec2 q = fract(w) - 0.5;
+  float hr = h21(id), d = length(q);
+  vec3 pal0 = vec3(0.85, 0.1, 0.12), pal1 = vec3(0.95, 0.95, 0.92), pal2 = vec3(0.1, 0.3, 0.85),
+       pal3 = vec3(0.98, 0.78, 0.1), pal4 = vec3(0.1, 0.6, 0.3), pal5 = vec3(0.7, 0.2, 0.75);
+  vec3 A = hr < 0.2 ? pal0 : hr < 0.4 ? pal2 : hr < 0.6 ? pal4 : hr < 0.8 ? pal5 : pal3;
+  vec3 B = fract(hr * 7.3) < 0.5 ? pal1 : pal3;
+  float petals = 5.0 + floor(4.0 * fract(hr * 3.1));
+  float qang = atan(q.y, q.x);
+  float flower = smoothstep(0.02, -0.02, d - 0.3 * (0.6 + 0.4 * abs(cos(qang * petals * 0.5))));
+  float rings = step(0.5, fract(d * 9.0 + hr));
+  vec3 cane = mix(A * 0.9, B, flower * 0.85);
+  cane = mix(cane, A * 0.6, (1.0 - flower) * rings * 0.6);
+  cane = mix(cane, pal3, smoothstep(0.06, 0.03, d));                    // a bright centre
+  float disc = smoothstep(0.47, 0.44, d);
+  col = cane * disc * (0.85 + 0.3 * en);
+  col += smoothstep(0.02, 0.0, abs(d - 0.455)) * 0.25;                  // glassy edge
+${WINDOW('0.46')}
+  ret = max(col, fb * 0.3);`
+    }),
+
+    'Kaleido · Fractal': make({
+      speed: 0.09, spin: 0.008, bloom: 0.45, disp: 0.003, sat: 1.25, vig: 0.4, zoom: 1.0,
+      body: `
+  // a fractal mandala: fold, invert, repeat
+  vec2 z = kfold(p, 8.0, q5) * (2.4 - 0.15 * beat);
+  vec2 cst = vec2(0.82 + 0.08 * sin(q4 * 0.31), 0.58 + 0.08 * cos(q4 * 0.23));
+  float glow = 0.0;
+  for (int i = 0; i < 10; i++) {
+    z = abs(z) / max(dot(z, z), 0.02) - cst;
+    float m = length(z);
+    col += film(float(i) * 0.09 + m * 0.12 + q4 * 0.03) * exp(-abs(m - 1.0) * 11.0) * 0.32;
+    glow += exp(-m * 5.0) * 0.03;
+  }
+  col += vec3(0.7, 0.85, 1.0) * glow;
+  col = pow(col, vec3(1.35)) * 1.5;
+  col *= 0.8 + 0.4 * en;
+${WINDOW('0.47')}
+  ret = max(col, fb * 0.55);`
+    })
+  };
+})();
+
 
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -936,7 +1255,7 @@ function presetPool() {
   if (window.extra?.default) Object.assign(all, window.extra.default);
   return all;
 }
-const presets = Object.assign(presetPool(), FLORAL_PRESETS, KALEIDO_PRESETS);
+const presets = Object.assign(presetPool(), FLORAL_PRESETS, KALEIDO_PRESETS, KALEIDO2_PRESETS);
 const kindRank = k => isFloral(k) ? 0 : isKaleido(k) ? 1 : 2;
 const presetKeys = Object.keys(presets).sort((a, b) =>
   (kindRank(a) - kindRank(b)) || a.localeCompare(b, undefined, { sensitivity: 'base' }));
