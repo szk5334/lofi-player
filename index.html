@@ -84,9 +84,6 @@ body.viz-floral #viz-tone{background:rgba(20,22,28,.1)}
 /* Kaleido visuals are neon glass; let them through almost untouched. */
 body.viz-kaleido #viz{filter:brightness(.97) saturate(1.04) contrast(1.03)}
 body.viz-kaleido #viz-tone{background:rgba(20,22,28,.04)}
-/* incense smoke drifts over every visual, under the controls */
-#smoke{position:fixed;inset:0;width:100%;height:100dvh;z-index:2;pointer-events:none;display:block}
-#smoke[hidden]{display:none}
 #viz-shade{position:fixed;inset:0 0 auto 0;height:calc(var(--top)*2.2);z-index:1;
   pointer-events:none;background:linear-gradient(to bottom,
     rgba(20,22,28,.88) 0%,rgba(20,22,28,.55) 45%,rgba(20,22,28,0) 100%)}
@@ -369,7 +366,6 @@ body.drawer-open #viz-bar{opacity:0;pointer-events:none}
 <canvas id="viz-fallback" aria-hidden="true"></canvas>
 <div id="viz-tone" aria-hidden="true"></div>
 <div id="viz-shade" aria-hidden="true"></div>
-<canvas id="smoke" aria-hidden="true" hidden></canvas>
 <audio id="au" crossorigin="anonymous" preload="none"></audio>
 
 <header id="transport">
@@ -1221,9 +1217,7 @@ ${WINDOW('0.47')}
 
 /* ═══════════════════════════════════════════════════════════════════
    Cosmos: an endless flight through a sea of stars, with nebula gas
-   swirling slowly far behind them. The incense smoke runs faster over
-   this one (see SMOKE_SPEED), so it twists in front of the stars while
-   the gas drifts slowly behind.
+   swirling slowly far behind them.
    ═══════════════════════════════════════════════════════════════════ */
 
 const COSMOS_PRESETS = (() => {
@@ -1265,11 +1259,11 @@ mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
   pulse = max(pulse * 0.9, hit);
   q2 = min(max(e, 0.2), 2.5);
   q3 = pulse;
-  ph = ph + (0.055 + 0.05 * min(max(q2 - 0.6, 0), 1.6) + 0.06 * pulse) / max(fps, 15);
+  ph = ph + (0.24 + 0.14 * min(max(q2 - 0.6, 0), 1.6) + 0.2 * pulse) / max(fps, 15);
   q4 = ph;
   drift = drift + (0.008 + 0.004 * q2) / max(fps, 15);
   q5 = drift;
-  zoom = 1.007 + 0.01 * min(q2, 2) + 0.015 * pulse;`,
+  zoom = 1.02 + 0.016 * min(q2, 2) + 0.025 * pulse;`,
       pixel_eqs_eel: '',
       warp: `${HEAD}
  shader_body {
@@ -1283,11 +1277,19 @@ mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
   vec2 w2 = vec2(fbm(np * 2.6 + w1 * 2.4 + vec2(1.7, 9.2) + tt * 0.5), fbm(np * 2.6 + w1 * 2.4 + vec2(8.3, 2.8) - tt * 0.4));
   float n = fbm(np * 2.0 + w2 * 2.3);
   float dens = smoothstep(0.32, 0.85, n) * (0.5 + 0.6 * fbm(np * 5.0 - w1 * 1.5));
-  vec3 neb = mix(vec3(0.06, 0.02, 0.16), vec3(0.62, 0.12, 0.55), smoothstep(0.38, 0.75, n));
-  neb = mix(neb, vec3(0.08, 0.52, 0.64), smoothstep(0.4, 0.8, w2.x) * 0.85);
-  neb = mix(neb, vec3(1.0, 0.68, 0.38), smoothstep(0.7, 0.95, n) * 0.55);
-  neb *= dens * (0.6 + 0.25 * en);
-  neb += vec3(0.95, 0.8, 1.0) * pow(smoothstep(0.7, 1.0, n), 3.0) * (0.35 + 0.25 * beat);   // glowing pockets
+  // iridescent, like sun dogs: the cloud's own swirl picks a spectral hue
+  // that drifts over time, softened toward white, with rainbow fringes
+  // along the cloud edges and a fine shimmer moving through the gas
+  float hue = n * 3.4 + w2.x * 1.5 - w1.y * 0.9 + time * 0.035 + length(p) * 1.2;
+  hue += 0.16 * fbm(np * 9.0 + vec2(time * 0.2, -time * 0.15));
+  vec3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (hue + vec3(0.0, 0.33, 0.67)));
+  rainbow = mix(rainbow, vec3(1.0), 0.26);
+  float fringe = exp(-pow((n - 0.58) / 0.05, 2.0)) + 0.6 * exp(-pow((n - 0.7) / 0.035, 2.0));
+  vec3 neb = rainbow * dens * (0.62 + 0.25 * en);
+  neb += (0.5 + 0.5 * cos(6.2831853 * (hue * 1.6 + 0.3 + vec3(0.0, 0.33, 0.67)))) * fringe * 0.4 * (0.5 + 0.5 * dens);
+  float glint = pow(vnoise(np * 34.0 + vec2(time * 0.7, -time * 0.4)), 14.0) * dens * 2.0;
+  neb += vec3(glint) * (0.7 + 0.5 * beat);
+  neb += vec3(0.97, 0.93, 1.0) * pow(smoothstep(0.7, 1.0, n), 3.0) * (0.3 + 0.25 * beat);   // glowing pockets
   vec3 col = vec3(0.004, 0.006, 0.02) + neb;
 
   // faint fixed dust, far away
@@ -1317,7 +1319,7 @@ mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
   }
 
   vec3 fb = texture(sampler_main, uv).xyz;
-  ret = max(fb * 0.74, col + st);
+  ret = max(fb * 0.8, col + st);
  }`,
       comp: ` shader_body {
   vec3 c = texture(sampler_main, uv).xyz;
@@ -1333,148 +1335,6 @@ mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
   };
 })();
 const isCosmos = k => k.startsWith('Cosmos · ');
-// how much faster the incense smoke runs while a Cosmos visual is up
-const SMOKE_SPEED_COSMOS = 1.9;
-
-/* ═══════════════════════════════════════════════════════════════════
-   Incense smoke: a lit stick just off the bottom-left corner, slowly
-   swinging around it, its smoke drifting on screen and rising slowly,
-   carried right by a light breeze, curling and spreading as it climbs. Its own small WebGL canvas above the visualizer and below the
-   controls, drawn at reduced resolution (smoke is soft) and ~30 fps.
-   ═══════════════════════════════════════════════════════════════════ */
-
-const SMOKE_FRAG = `
-precision highp float;
-uniform vec2 res;
-uniform float t;
-uniform float breeze;
-float hash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
-float noise(vec2 p) {
-  vec2 i = floor(p), f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-             mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
-}
-float fbm(vec2 p) {
-  float v = 0.0, a = 0.5;
-  mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 5; i++) { v += a * noise(p); p = m * p; a *= 0.5; }
-  return v;
-}
-void main() {
-  vec2 uv = gl_FragCoord.xy / res;
-  float asp = res.x / res.y;
-  vec2 p = vec2(uv.x * asp, uv.y);              // units of screen height, y up
-  // the ember: off screen, swinging slowly around the bottom-left corner,
-  // from just past the left edge to just under the bottom edge
-  float sw = 3.6 + 1.1 * sin(t * 0.045) + 0.15 * sin(t * 0.11);
-  vec2 tip = vec2(-0.03, -0.03) + 0.06 * vec2(cos(sw), sin(sw));
-  float rise = t * 0.07;
-
-  // rising vortices that wind the smoke into curls; they're born weak just
-  // above the stick, twirl hardest mid-plume and fade out near the top
-  for (int i = 0; i < 4; i++) {
-    float fi = float(i);
-    float age = t * 0.032 + fi * 0.25;
-    float vy = fract(age) * 1.1;
-    float jit = hash(vec2(fi, floor(age))) - 0.5;
-    vec2 vc = tip + vec2(0.22 * vy + breeze * vy * vy * 0.55 + jit * 0.1 * vy, vy);
-    vec2 dv = p - vc;
-    float R = 0.035 + 0.13 * vy;
-    float spin = (mod(fi, 2.0) * 2.0 - 1.0) * (1.6 + 1.2 * jit);
-    float ang = spin * exp(-dot(dv, dv) / (R * R)) * smoothstep(0.06, 0.3, vy) * (1.0 - smoothstep(0.8, 1.1, vy));
-    float cs = cos(ang), sn = sin(ang);
-    p = vc + mat2(cs, -sn, sn, cs) * dv;
-  }
-
-  float y = p.y - tip.y;
-  float yy = max(y, 0.0);
-
-  // centreline: straight up at first, then the breeze leans it right, swaying
-  float sway = 0.5 * sin(t * 0.13) + 0.5 * sin(t * 0.071 + 1.0);
-  float cx = tip.x + 0.22 * yy + breeze * yy * yy * (0.55 + 0.18 * sway) + 0.03 * yy * sin(yy * 4.0 - t * 0.35);
-  // a slow wave running up the thin thread before it breaks into curls
-  cx += 0.012 * smoothstep(0.02, 0.18, yy) * (1.0 - smoothstep(0.25, 0.55, yy)) * sin(yy * 17.0 - t * 1.3);
-  vec2 q = vec2(p.x - cx, yy);
-
-  // big slow curls that grow with height, then finer twists on top
-  vec2 w = vec2(fbm(vec2(q.x * 2.5, q.y * 1.8 - rise)),
-                fbm(vec2(q.x * 2.5 + 7.3, q.y * 1.8 - rise + 3.1))) - 0.5;
-  q += w * (0.006 + 0.5 * yy * yy);
-  vec2 w2 = vec2(fbm(q * vec2(6.0, 4.0) - vec2(0.0, rise * 2.2)),
-                 fbm(q * vec2(6.0, 4.0) + vec2(4.1, -rise * 2.2))) - 0.5;
-  q += w2 * (0.003 + 0.13 * yy);
-
-  // a thin laminar thread near the stick that widens and frays as it rises
-  float width = 0.003 + 0.085 * pow(yy, 1.35);
-  float core = exp(-pow(q.x / width, 2.0));
-  float fil = 1.0 - abs(2.0 * noise(vec2(q.x / width * 1.3, q.y * 11.0 - rise * 6.0)) - 1.0);
-  fil = pow(fil, 3.0);
-  float body = fbm(q * vec2(9.0, 5.0) - vec2(0.0, rise * 3.0));
-  float d = core * mix(0.6 + 0.4 * fil, body * 1.5, smoothstep(0.04, 0.45, yy));
-  d *= smoothstep(-0.004, 0.015, y);             // starts at the ember
-  d *= 1.0 / (1.0 + width * 11.0);               // thins as it spreads
-  d *= 1.0 - smoothstep(0.7, 1.15, yy);          // and dissipates
-  float a = clamp(d * 0.8, 0.0, 0.85);
-  vec3 smoke = mix(vec3(0.74, 0.79, 0.88), vec3(0.96, 0.94, 0.9), body);
-
-  gl_FragColor = vec4(smoke * a, a);              // premultiplied
-}`;
-
-function startSmoke(cv, opts = {}) {
-  const gl = cv.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
-  if (!gl) return null;
-  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
-  const pr = gl.createProgram();
-  gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }'));
-  gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, SMOKE_FRAG));
-  gl.linkProgram(pr);
-  gl.useProgram(pr);
-  const buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-  const loc = gl.getAttribLocation(pr, 'a');
-  gl.enableVertexAttribArray(loc);
-  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const uRes = gl.getUniformLocation(pr, 'res'), uT = gl.getUniformLocation(pr, 't'), uB = gl.getUniformLocation(pr, 'breeze');
-
-  const scale = opts.scale || 0.5;            // render below screen resolution; smoke is soft
-  const fit = () => {
-    const w = Math.max(2, Math.round(cv.clientWidth * scale)), h = Math.max(2, Math.round(cv.clientHeight * scale));
-    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-    gl.viewport(0, 0, w, h);
-  };
-  addEventListener('resize', fit);
-
-  // its own clock, so the speed can change without the smoke jumping
-  let clock = 40 * Math.random();                        // start mid-plume, not from nothing
-  let raf = null, last = 0, prev = 0, speed = 1, running = false;
-  const frame = now => {
-    if (!running) return;
-    raf = requestAnimationFrame(frame);
-    if (now - last < (opts.interval || 33)) return;   // ~30 fps is plenty for smoke
-    last = now;
-    const dt = prev ? Math.min(0.1, (now - prev) / 1000) : 0;
-    prev = now;
-    if (opts.paused?.()) return;
-    speed += ((opts.speed?.() || 1) - speed) * 0.02;    // ease between speeds
-    clock += dt * speed;
-    gl.uniform2f(uRes, cv.width, cv.height);
-    gl.uniform1f(uT, clock);
-    // a wider screen gives the breeze more room to carry it across
-    gl.uniform1f(uB, Math.min(1.6, 0.7 + 0.45 * (cv.width / cv.height)));
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-  };
-  return {
-    // measure after un-hiding: a hidden canvas reports a 0×0 size
-    start() { if (running) return; running = true; cv.hidden = false; fit(); raf = requestAnimationFrame(frame); },
-    stop() { running = false; cancelAnimationFrame(raf); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); cv.hidden = true; },
-    get running() { return running; },
-    drawAt(sec) { gl.uniform2f(uRes, cv.width, cv.height); gl.uniform1f(uT, sec);
-      gl.uniform1f(uB, Math.min(1.6, 0.7 + 0.45 * (cv.width / cv.height))); gl.drawArrays(gl.TRIANGLES, 0, 3); }
-  };
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    Shared helpers
@@ -2573,11 +2433,6 @@ function renderVisuals() {
       <p class="lb-help">Rotating through ${plural(showing, 'visual')}${autoCycle ? `, a new one every ${Math.round(CFG.presetHold / 1000)}s` : '; auto-change is off, so the current one stays'}${VKINDS.filter(t => vtype[t]).length > 1 ? '; each kind you have on gets an equal share' : ''}. Tap the visualizer for its rating bar; double-tap for the next one; press and hold for thumbs down.</p>
     </div>
     <div class="lb-sec">
-      <span class="lb-label">Overlay</span>
-      <div class="lb-row"><button class="chip" data-smoke aria-pressed="${smokeOn}">Incense smoke</button></div>
-      <p class="lb-help">Smoke from a stick of incense just off the bottom-left corner, swinging slowly, its smoke drifting on over whatever visual is up. It runs faster over the Cosmos visual.</p>
-    </div>
-    <div class="lb-sec">
       <span class="lb-label">Browse</span>
       <div class="lb-row">${chips(['all', ...CATS, ...(banned.size ? ['bright'] : [])], 'data-vv', k => vView === k, c)}</div>
       <input class="lb-search" type="search" placeholder="Search visuals" value="${esc(vQuery)}" data-search>
@@ -2607,7 +2462,7 @@ function fillVisuals() {
         <span class="lb-txt"><span class="lb-t">${esc(k)}</span>
           ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : isFloral(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">floral · melts the pictures</span></span>'
           : isKaleido(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">kaleido · dichroic glass</span></span>'
-          : isCosmos(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">cosmos · star flight, faster smoke</span></span>' : ''}</span>
+          : isCosmos(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">cosmos · star flight</span></span>' : ''}</span>
       </button>
       ${voteButtons(vVoteOf(k), 'data-vvote', k)}
     </li>`).join('')
@@ -2657,11 +2512,6 @@ paneV.addEventListener('click', e => {
   const d = t.dataset;
   if (d.vsub) { vSub = d.vsub; store.set('nd.vsub', vSub); paneV.scrollTop = 0; renderVisuals(); return; }
   if ('export' in d) { exportAll(); return; }
-  if ('smoke' in d) {
-    smokeOn = !smokeOn; store.set('nd.smoke', smokeOn); applySmoke(); refreshVisuals();
-    toast(smokeOn ? 'Incense lit' : 'Incense out');
-    return;
-  }
 
   // visuals
   if (d.vf) { if (flip(vfilter, d.vf, CATS, 'nd.vfilter')) { if (viz && current && !vAllowed(current)) roll(2.5); refreshVisuals(); } return; }
@@ -2929,26 +2779,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.body.classList.contains('drawer-open')) setDrawer(false);
 });
 
-/* --- incense smoke ------------------------------------------------ */
-
-let smokeOn = store.get('nd.smoke', true), smoke = null;
-function applySmoke() {
-  if (smokeOn && !reduce) {
-    if (!smoke) {
-      try {
-        smoke = startSmoke($('smoke'), {
-          scale: 0.6,
-          // no point drawing it under the menu, or in a hidden tab
-          paused: () => document.hidden || document.body.classList.contains('drawer-open'),
-          // over a Cosmos visual the smoke runs faster, in front of the slow nebula
-          speed: () => (viz && isCosmos(current)) ? SMOKE_SPEED_COSMOS : 1
-        });
-      } catch (e) { console.warn('smoke:', e); }
-    }
-    smoke?.start();
-  } else smoke?.stop();
-}
-
 /* --- boot --------------------------------------------------------- */
 
 (async function boot() {
@@ -2959,7 +2789,6 @@ function applySmoke() {
     history.replaceState(null, '', location.pathname);
     setTimeout(() => toast(`Restored ${plural(n, 'visual')}`), 400);
   }
-  applySmoke();
   renderTracks();
   loadLibrary();
   await loadPictures();
