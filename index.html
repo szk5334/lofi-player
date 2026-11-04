@@ -1220,9 +1220,126 @@ ${WINDOW('0.47')}
 
 
 /* ═══════════════════════════════════════════════════════════════════
-   Incense smoke: a lit stick in the bottom-left corner, its smoke rising
-   slowly, carried right by a light breeze, curling and spreading as it
-   climbs. Its own small WebGL canvas above the visualizer and below the
+   Cosmos: an endless flight through a sea of stars, with nebula gas
+   swirling slowly far behind them. The incense smoke runs faster over
+   this one (see SMOKE_SPEED), so it twists in front of the stars while
+   the gas drifts slowly behind.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const COSMOS_PRESETS = (() => {
+  const off = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '' }));
+  const offW = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '', point_eqs_eel: '' }));
+
+  const HEAD = `
+float h21(vec2 p) { p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }
+vec2 h22(vec2 p) { return vec2(h21(p), h21(p + 17.31)); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
+  for (int i = 0; i < 5; i++) { v += a * vnoise(p); p = m * p; a *= 0.5; }
+  return v;
+}
+mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+`;
+
+  return {
+    'Cosmos · Star Sea': {
+      version: 2,
+      baseVals: {
+        rating: 5, gammaadj: 1, decay: 1, wave_a: 0, wave_scale: 0.1, modwavealphastart: 0, modwavealphaend: 0,
+        ob_size: 0, ob_a: 0, ib_size: 0, ib_a: 0, mv_a: 0, mv_l: 0,
+        zoom: 1.02, rot: 0, warp: 0, warpscale: 1, warpanimspeed: 1, wrap: 0, darken_center: 0
+      },
+      shapes: off(), waves: offW(),
+      init_eqs_eel: 'avg = 1; last = 0; pulse = 0; ph = 0; drift = 0;',
+      frame_eqs_eel: `
+  e = (bass_att + mid_att + treb_att) / 3;
+  avg = avg * 0.985 + e * 0.015;
+  hit = above(bass, avg * 1.32 + 0.12) * above(time, last + 0.28);
+  last = if(hit, time, last);
+  pulse = max(pulse * 0.9, hit);
+  q2 = min(max(e, 0.2), 2.5);
+  q3 = pulse;
+  ph = ph + (0.055 + 0.05 * min(max(q2 - 0.6, 0), 1.6) + 0.06 * pulse) / max(fps, 15);
+  q4 = ph;
+  drift = drift + (0.008 + 0.004 * q2) / max(fps, 15);
+  q5 = drift;
+  zoom = 1.007 + 0.01 * min(q2, 2) + 0.015 * pulse;`,
+      pixel_eqs_eel: '',
+      warp: `${HEAD}
+ shader_body {
+  vec2 p = (uv_orig - 0.5) * aspect.xy;
+  float en = q2, beat = q3;
+
+  // nebula: domain-warped gas, far behind, turning and drifting slowly
+  float tt = time * 0.025;
+  vec2 np = rot2(q5 * 2.0) * p * (1.5 + 0.2 * sin(time * 0.013)) + vec2(q5 * 3.0, 0.0);
+  vec2 w1 = vec2(fbm(np * 1.8 + vec2(tt, -tt * 0.7)), fbm(np * 1.8 + vec2(5.2 - tt * 0.6, 1.3 + tt)));
+  vec2 w2 = vec2(fbm(np * 2.6 + w1 * 2.4 + vec2(1.7, 9.2) + tt * 0.5), fbm(np * 2.6 + w1 * 2.4 + vec2(8.3, 2.8) - tt * 0.4));
+  float n = fbm(np * 2.0 + w2 * 2.3);
+  float dens = smoothstep(0.32, 0.85, n) * (0.5 + 0.6 * fbm(np * 5.0 - w1 * 1.5));
+  vec3 neb = mix(vec3(0.06, 0.02, 0.16), vec3(0.62, 0.12, 0.55), smoothstep(0.38, 0.75, n));
+  neb = mix(neb, vec3(0.08, 0.52, 0.64), smoothstep(0.4, 0.8, w2.x) * 0.85);
+  neb = mix(neb, vec3(1.0, 0.68, 0.38), smoothstep(0.7, 0.95, n) * 0.55);
+  neb *= dens * (0.6 + 0.25 * en);
+  neb += vec3(0.95, 0.8, 1.0) * pow(smoothstep(0.7, 1.0, n), 3.0) * (0.35 + 0.25 * beat);   // glowing pockets
+  vec3 col = vec3(0.004, 0.006, 0.02) + neb;
+
+  // faint fixed dust, far away
+  vec2 dp = p * 160.0;
+  col += vec3(0.6, 0.7, 1.0) * step(0.985, h21(floor(dp))) * smoothstep(0.35, 0.0, length(fract(dp) - 0.5)) * 0.35;
+
+  // stars: six layers, each flying from far to near and recycling
+  vec3 st = vec3(0.0);
+  for (int i = 0; i < 6; i++) {
+    float fi = float(i);
+    float z = fract(fi / 6.0 + q4);
+    float sc = mix(26.0, 0.9, z * z);
+    vec2 sp = p * sc + vec2(fi * 13.7, fi * 7.3);
+    vec2 id = floor(sp);
+    vec2 f = fract(sp) - 0.5;
+    float hs = h21(id + fi * 11.0);
+    vec2 d = f - (h22(id + fi * 31.0) - 0.5) * 0.7;
+    float r2 = dot(d, d);
+    float s = 0.0006 + 0.0012 * hs;
+    float core = exp(-r2 / s);
+    float halo = 0.0035 / (r2 + 0.0035) * 0.22 * z;
+    float spike = (exp(-abs(d.x) * 140.0) * exp(-abs(d.y) * 9.0) + exp(-abs(d.y) * 140.0) * exp(-abs(d.x) * 9.0)) * 0.5 * smoothstep(0.6, 1.0, z) * step(0.8, hs);
+    float b = (core + halo + spike) * step(0.55, hs) * smoothstep(0.0, 0.35, z) * (1.0 - smoothstep(0.88, 1.0, z));
+    float twinkle = 0.75 + 0.25 * sin(time * (2.0 + 3.0 * hs) + hs * 50.0);
+    vec3 sc3 = hs < 0.7 ? vec3(0.75, 0.85, 1.0) : hs < 0.88 ? vec3(1.0, 0.97, 0.92) : vec3(1.0, 0.8, 0.6);
+    st += sc3 * b * twinkle * (0.9 + 0.5 * beat);
+  }
+
+  vec3 fb = texture(sampler_main, uv).xyz;
+  ret = max(fb * 0.74, col + st);
+ }`,
+      comp: ` shader_body {
+  vec3 c = texture(sampler_main, uv).xyz;
+  vec3 b1 = texture(sampler_blur1, uv).xyz * scale1 + bias1;
+  vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
+  c += b1 * 0.35 + b2 * (0.35 + 0.2 * q2);
+  c = c / (1.0 + 0.25 * c);
+  vec2 d = uv - 0.5;
+  c *= mix(0.55, 1.0, smoothstep(0.85, 0.25, length(d * vec2(1.0, 1.1))));
+  ret = clamp(c, 0.0, 1.0);
+ }`
+    }
+  };
+})();
+const isCosmos = k => k.startsWith('Cosmos · ');
+// how much faster the incense smoke runs while a Cosmos visual is up
+const SMOKE_SPEED_COSMOS = 1.9;
+
+/* ═══════════════════════════════════════════════════════════════════
+   Incense smoke: a lit stick just off the bottom-left corner, slowly
+   swinging around it, its smoke drifting on screen and rising slowly,
+   carried right by a light breeze, curling and spreading as it climbs. Its own small WebGL canvas above the visualizer and below the
    controls, drawn at reduced resolution (smoke is soft) and ~30 fps.
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -1248,7 +1365,10 @@ void main() {
   vec2 uv = gl_FragCoord.xy / res;
   float asp = res.x / res.y;
   vec2 p = vec2(uv.x * asp, uv.y);              // units of screen height, y up
-  vec2 tip = vec2(0.04, 0.055);                 // the ember
+  // the ember: off screen, swinging slowly around the bottom-left corner,
+  // from just past the left edge to just under the bottom edge
+  float sw = 3.6 + 1.1 * sin(t * 0.045) + 0.15 * sin(t * 0.11);
+  vec2 tip = vec2(-0.03, -0.03) + 0.06 * vec2(cos(sw), sin(sw));
   float rise = t * 0.07;
 
   // rising vortices that wind the smoke into curls; they're born weak just
@@ -1258,7 +1378,7 @@ void main() {
     float age = t * 0.032 + fi * 0.25;
     float vy = fract(age) * 1.1;
     float jit = hash(vec2(fi, floor(age))) - 0.5;
-    vec2 vc = tip + vec2(breeze * vy * vy * 0.55 + jit * 0.1 * vy, vy);
+    vec2 vc = tip + vec2(0.22 * vy + breeze * vy * vy * 0.55 + jit * 0.1 * vy, vy);
     vec2 dv = p - vc;
     float R = 0.035 + 0.13 * vy;
     float spin = (mod(fi, 2.0) * 2.0 - 1.0) * (1.6 + 1.2 * jit);
@@ -1272,7 +1392,7 @@ void main() {
 
   // centreline: straight up at first, then the breeze leans it right, swaying
   float sway = 0.5 * sin(t * 0.13) + 0.5 * sin(t * 0.071 + 1.0);
-  float cx = tip.x + breeze * yy * yy * (0.55 + 0.18 * sway) + 0.03 * yy * sin(yy * 4.0 - t * 0.35);
+  float cx = tip.x + 0.22 * yy + breeze * yy * yy * (0.55 + 0.18 * sway) + 0.03 * yy * sin(yy * 4.0 - t * 0.35);
   // a slow wave running up the thin thread before it breaks into curls
   cx += 0.012 * smoothstep(0.02, 0.18, yy) * (1.0 - smoothstep(0.25, 0.55, yy)) * sin(yy * 17.0 - t * 1.3);
   vec2 q = vec2(p.x - cx, yy);
@@ -1298,21 +1418,7 @@ void main() {
   float a = clamp(d * 0.8, 0.0, 0.85);
   vec3 smoke = mix(vec3(0.74, 0.79, 0.88), vec3(0.96, 0.94, 0.9), body);
 
-  // the stick, coming in from off-screen, and its glowing tip
-  vec2 sd = normalize(vec2(-0.32, -1.0));
-  vec2 rp = p - tip;
-  float along = dot(rp, sd);
-  float perp = abs(rp.x * sd.y - rp.y * sd.x);
-  float stick = step(0.004, along) * smoothstep(0.0028, 0.0016, perp);
-  float de = length(rp);
-  float flick = 0.85 + 0.15 * sin(t * 2.7) * sin(t * 1.3 + 0.5);
-  vec3 ember = vec3(1.0, 0.42, 0.1) * (exp(-de * de / 0.000018) * 1.3 + exp(-de * de / 0.0005) * 0.22 * flick);
-
-  vec3 c = smoke * a;                            // premultiplied
-  c = mix(c, vec3(0.06, 0.045, 0.035), stick * 0.92);
-  c += ember;
-  float alpha = clamp(max(max(a, stick * 0.92), max(ember.r, ember.g) * 0.9), 0.0, 1.0);
-  gl_FragColor = vec4(c, alpha);
+  gl_FragColor = vec4(smoke * a, a);              // premultiplied
 }`;
 
 function startSmoke(cv, opts = {}) {
@@ -1341,16 +1447,21 @@ function startSmoke(cv, opts = {}) {
   };
   addEventListener('resize', fit);
 
-  const t0 = performance.now() - 40000 * Math.random();   // start mid-plume, not from nothing
-  let raf = null, last = 0, running = false;
+  // its own clock, so the speed can change without the smoke jumping
+  let clock = 40 * Math.random();                        // start mid-plume, not from nothing
+  let raf = null, last = 0, prev = 0, speed = 1, running = false;
   const frame = now => {
     if (!running) return;
     raf = requestAnimationFrame(frame);
     if (now - last < (opts.interval || 33)) return;   // ~30 fps is plenty for smoke
     last = now;
+    const dt = prev ? Math.min(0.1, (now - prev) / 1000) : 0;
+    prev = now;
     if (opts.paused?.()) return;
+    speed += ((opts.speed?.() || 1) - speed) * 0.02;    // ease between speeds
+    clock += dt * speed;
     gl.uniform2f(uRes, cv.width, cv.height);
-    gl.uniform1f(uT, (now - t0) / 1000);
+    gl.uniform1f(uT, clock);
     // a wider screen gives the breeze more room to carry it across
     gl.uniform1f(uB, Math.min(1.6, 0.7 + 0.45 * (cv.width / cv.height)));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -1448,8 +1559,8 @@ function presetPool() {
   if (window.extra?.default) Object.assign(all, window.extra.default);
   return all;
 }
-const presets = Object.assign(presetPool(), FLORAL_PRESETS, KALEIDO_PRESETS, KALEIDO2_PRESETS);
-const kindRank = k => isFloral(k) ? 0 : isKaleido(k) ? 1 : 2;
+const presets = Object.assign(presetPool(), FLORAL_PRESETS, KALEIDO_PRESETS, KALEIDO2_PRESETS, COSMOS_PRESETS);
+const kindRank = k => isFloral(k) ? 0 : isKaleido(k) ? 1 : isCosmos(k) ? 2 : 3;
 const presetKeys = Object.keys(presets).sort((a, b) =>
   (kindRank(a) - kindRank(b)) || a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
@@ -1488,10 +1599,10 @@ const BANS = 'nd.banned';
 const banned = new Set(store.get(BANS, []));
 const saveBans = () => store.set(BANS, [...banned]);
 
-const VKINDS = ['floral', 'kaleido', 'classic'];
-const VKIND_LABEL = { floral: 'Floral', kaleido: 'Kaleido', classic: 'Classic' };
-const vtype = Object.assign({ floral: true, kaleido: true, classic: true }, store.get('nd.vtype', {}));
-const typeOf = k => isFloral(k) ? 'floral' : isKaleido(k) ? 'kaleido' : 'classic';
+const VKINDS = ['floral', 'kaleido', 'cosmos', 'classic'];
+const VKIND_LABEL = { floral: 'Floral', kaleido: 'Kaleido', cosmos: 'Cosmos', classic: 'Classic' };
+const vtype = Object.assign({ floral: true, kaleido: true, cosmos: true, classic: true }, store.get('nd.vtype', {}));
+const typeOf = k => isFloral(k) ? 'floral' : isKaleido(k) ? 'kaleido' : isCosmos(k) ? 'cosmos' : 'classic';
 // Florals need the pictures; without them they'd only show the stock cloud texture.
 const vAllowed = k => vtype[typeOf(k)] && (!isFloral(k) || pics.length > 0) &&
                       vfilter[catOf(vVoteOf(k))] && !banned.has(k);
@@ -1501,8 +1612,13 @@ function pickPreset() {
   if (!live.length) live = presetKeys.filter(vAllowed);
   // Each kind that's on gets an equal share, so 9 florals and 3 kaleidos
   // aren't buried under 107 classics.
+  // (a kind with only one or two visuals gets a smaller share, so it doesn't repeat constantly)
   const kinds = VKINDS.map(t => live.filter(k => typeOf(k) === t)).filter(g => g.length);
-  if (kinds.length > 1) live = kinds[Math.floor(Math.random() * kinds.length)];
+  if (kinds.length > 1) {
+    const w = kinds.map(g => Math.min(g.length, 3) / 3);
+    let x = Math.random() * w.reduce((a, b) => a + b, 0);
+    live = kinds.find((g, i) => (x -= w[i]) < 0) || kinds[kinds.length - 1];
+  }
   if (!live.length) live = presetKeys.filter(k => !banned.has(k) && vVoteOf(k) >= 0);
   if (!live.length) live = presetKeys.filter(k => !banned.has(k));
   if (!live.length) { banned.clear(); saveBans(); live = presetKeys; }
@@ -1520,7 +1636,7 @@ function showPreset(k, blend = 2.5) {
   if (!k || !presets[k]) return;
   current = k;
   document.body.classList.toggle('viz-floral', isFloral(k));
-  document.body.classList.toggle('viz-kaleido', isKaleido(k));
+  document.body.classList.toggle('viz-kaleido', isKaleido(k) || isCosmos(k));
   if (isFloral(k) && !curPic && pics.length) showPicture(pickPic());
   if (viz && k === DUO_PRESET) startDuo();
   else if (isFloral(k) && curPic && slots[0].pic !== curPic) loadSlot(0, curPic);
@@ -2459,7 +2575,7 @@ function renderVisuals() {
     <div class="lb-sec">
       <span class="lb-label">Overlay</span>
       <div class="lb-row"><button class="chip" data-smoke aria-pressed="${smokeOn}">Incense smoke</button></div>
-      <p class="lb-help">Smoke from a stick of incense in the bottom-left corner, drifting over whatever visual is up.</p>
+      <p class="lb-help">Smoke from a stick of incense just off the bottom-left corner, swinging slowly, its smoke drifting on over whatever visual is up. It runs faster over the Cosmos visual.</p>
     </div>
     <div class="lb-sec">
       <span class="lb-label">Browse</span>
@@ -2490,7 +2606,8 @@ function fillVisuals() {
         <span class="lb-dot" aria-hidden="true"></span>
         <span class="lb-txt"><span class="lb-t">${esc(k)}</span>
           ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : isFloral(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">floral · melts the pictures</span></span>'
-          : isKaleido(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">kaleido · dichroic glass</span></span>' : ''}</span>
+          : isKaleido(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">kaleido · dichroic glass</span></span>'
+          : isCosmos(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">cosmos · star flight, faster smoke</span></span>' : ''}</span>
       </button>
       ${voteButtons(vVoteOf(k), 'data-vvote', k)}
     </li>`).join('')
@@ -2822,7 +2939,9 @@ function applySmoke() {
         smoke = startSmoke($('smoke'), {
           scale: 0.6,
           // no point drawing it under the menu, or in a hidden tab
-          paused: () => document.hidden || document.body.classList.contains('drawer-open')
+          paused: () => document.hidden || document.body.classList.contains('drawer-open'),
+          // over a Cosmos visual the smoke runs faster, in front of the slow nebula
+          speed: () => (viz && isCosmos(current)) ? SMOKE_SPEED_COSMOS : 1
         });
       } catch (e) { console.warn('smoke:', e); }
     }
