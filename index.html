@@ -1226,7 +1226,8 @@ const COSMOS_PRESETS = (() => {
 
   const HEAD = `
 float h21(vec2 p) { p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }
-vec2 h22(vec2 p) { return vec2(h21(p), h21(p + 17.31)); }
+float h11(float x) { return fract(sin(x * 127.1) * 43758.5453); }
+mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
 float vnoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   vec2 u = f * f * (3.0 - 2.0 * f);
@@ -1235,100 +1236,78 @@ float vnoise(vec2 p) {
 float fbm(vec2 p) {
   float v = 0.0, a = 0.5;
   mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 5; i++) { v += a * vnoise(p); p = m * p; a *= 0.5; }
-  return v;
+  for (int i = 0; i < 4; i++) { v += a * vnoise(p); p = m * p; a *= 0.5; }
+  return v / 0.9375;
 }
-mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
 `;
 
   return {
-    'Cosmos · Star Sea': {
+    /* A flight through iridescent gas on a dark sky. Four strata of cloud
+       at different depths: each approaches, swells, fills the screen and
+       dissolves as we pass through it, then is reborn far away as a new
+       cloud. Every stratum keeps its own drift, slow turn and swirl, so
+       some slide off the sides before we reach them and we fly straight
+       through others. All drawn fresh every frame (no feedback), so
+       nothing streaks or flares. */
+    'Cosmos · Nebula Flight': {
       version: 2,
       baseVals: {
         rating: 5, gammaadj: 1, decay: 1, wave_a: 0, wave_scale: 0.1, modwavealphastart: 0, modwavealphaend: 0,
         ob_size: 0, ob_a: 0, ib_size: 0, ib_a: 0, mv_a: 0, mv_l: 0,
-        zoom: 1.02, rot: 0, warp: 0, warpscale: 1, warpanimspeed: 1, wrap: 0, darken_center: 0
+        zoom: 1.0, rot: 0, warp: 0, warpscale: 1, warpanimspeed: 1, wrap: 0, darken_center: 0
       },
       shapes: off(), waves: offW(),
-      init_eqs_eel: 'avg = 1; last = 0; pulse = 0; ph = 0; drift = 0;',
+      init_eqs_eel: 'avg = 1; last = 0; pulse = 0; ph = 0;',
       frame_eqs_eel: `
   e = (bass_att + mid_att + treb_att) / 3;
   avg = avg * 0.985 + e * 0.015;
   hit = above(bass, avg * 1.32 + 0.12) * above(time, last + 0.28);
   last = if(hit, time, last);
-  pulse = max(pulse * 0.9, hit);
+  pulse = max(pulse * 0.92, hit);
   q2 = min(max(e, 0.2), 2.5);
   q3 = pulse;
-  ph = ph + (0.24 + 0.14 * min(max(q2 - 0.6, 0), 1.6) + 0.2 * pulse) / max(fps, 15);
-  q4 = ph;
-  drift = drift + (0.008 + 0.004 * q2) / max(fps, 15);
-  q5 = drift;
-  zoom = 1.02 + 0.016 * min(q2, 2) + 0.025 * pulse;`,
+  spd = 0.11 + 0.06 * min(max(q2 - 0.6, 0), 1.6) + 0.07 * pulse;
+  ph = ph + spd / max(fps, 15);
+  q4 = ph;`,
       pixel_eqs_eel: '',
-      warp: `${HEAD}
- shader_body {
-  vec2 p = (uv_orig - 0.5) * aspect.xy;
-  float en = q2, beat = q3;
-
-  // nebula: domain-warped gas, far behind, turning and drifting slowly
-  float tt = time * 0.025;
-  vec2 np = rot2(q5 * 2.0) * p * (1.5 + 0.2 * sin(time * 0.013)) + vec2(q5 * 3.0, 0.0);
-  vec2 w1 = vec2(fbm(np * 1.8 + vec2(tt, -tt * 0.7)), fbm(np * 1.8 + vec2(5.2 - tt * 0.6, 1.3 + tt)));
-  vec2 w2 = vec2(fbm(np * 2.6 + w1 * 2.4 + vec2(1.7, 9.2) + tt * 0.5), fbm(np * 2.6 + w1 * 2.4 + vec2(8.3, 2.8) - tt * 0.4));
-  float n = fbm(np * 2.0 + w2 * 2.3);
-  float dens = smoothstep(0.32, 0.85, n) * (0.5 + 0.6 * fbm(np * 5.0 - w1 * 1.5));
-  // iridescent, like sun dogs: the cloud's own swirl picks a spectral hue
-  // that drifts over time, softened toward white, with rainbow fringes
-  // along the cloud edges and a fine shimmer moving through the gas
-  float hue = n * 3.4 + w2.x * 1.5 - w1.y * 0.9 + time * 0.035 + length(p) * 1.2;
-  hue += 0.16 * fbm(np * 9.0 + vec2(time * 0.2, -time * 0.15));
-  vec3 rainbow = 0.5 + 0.5 * cos(6.2831853 * (hue + vec3(0.0, 0.33, 0.67)));
-  rainbow = mix(rainbow, vec3(1.0), 0.26);
-  float fringe = exp(-pow((n - 0.58) / 0.05, 2.0)) + 0.6 * exp(-pow((n - 0.7) / 0.035, 2.0));
-  vec3 neb = rainbow * dens * (0.62 + 0.25 * en);
-  neb += (0.5 + 0.5 * cos(6.2831853 * (hue * 1.6 + 0.3 + vec3(0.0, 0.33, 0.67)))) * fringe * 0.4 * (0.5 + 0.5 * dens);
-  float glint = pow(vnoise(np * 34.0 + vec2(time * 0.7, -time * 0.4)), 14.0) * dens * 2.0;
-  neb += vec3(glint) * (0.7 + 0.5 * beat);
-  neb += vec3(0.97, 0.93, 1.0) * pow(smoothstep(0.7, 1.0, n), 3.0) * (0.3 + 0.25 * beat);   // glowing pockets
-  vec3 col = vec3(0.004, 0.006, 0.02) + neb;
-
-  // faint fixed dust, far away
-  vec2 dp = p * 160.0;
-  col += vec3(0.6, 0.7, 1.0) * step(0.985, h21(floor(dp))) * smoothstep(0.35, 0.0, length(fract(dp) - 0.5)) * 0.35;
-
-  // stars: six layers, each flying from far to near and recycling
-  vec3 st = vec3(0.0);
-  for (int i = 0; i < 6; i++) {
-    float fi = float(i);
-    float z = fract(fi / 6.0 + q4);
-    float sc = mix(26.0, 0.9, z * z);
-    vec2 sp = p * sc + vec2(fi * 13.7, fi * 7.3);
-    vec2 id = floor(sp);
-    vec2 f = fract(sp) - 0.5;
-    float hs = h21(id + fi * 11.0);
-    vec2 d = f - (h22(id + fi * 31.0) - 0.5) * 0.7;
-    float r2 = dot(d, d);
-    float s = 0.0006 + 0.0012 * hs;
-    float core = exp(-r2 / s);
-    float halo = 0.0035 / (r2 + 0.0035) * 0.22 * z;
-    float spike = (exp(-abs(d.x) * 140.0) * exp(-abs(d.y) * 9.0) + exp(-abs(d.y) * 140.0) * exp(-abs(d.x) * 9.0)) * 0.5 * smoothstep(0.6, 1.0, z) * step(0.8, hs);
-    float b = (core + halo + spike) * step(0.55, hs) * smoothstep(0.0, 0.35, z) * (1.0 - smoothstep(0.88, 1.0, z));
-    float twinkle = 0.75 + 0.25 * sin(time * (2.0 + 3.0 * hs) + hs * 50.0);
-    vec3 sc3 = hs < 0.7 ? vec3(0.75, 0.85, 1.0) : hs < 0.88 ? vec3(1.0, 0.97, 0.92) : vec3(1.0, 0.8, 0.6);
-    st += sc3 * b * twinkle * (0.9 + 0.5 * beat);
-  }
-
-  vec3 fb = texture(sampler_main, uv).xyz;
-  ret = max(fb * 0.8, col + st);
+      warp: ` shader_body {
+  ret = vec3(0.0);
  }`,
-      comp: ` shader_body {
-  vec3 c = texture(sampler_main, uv).xyz;
-  vec3 b1 = texture(sampler_blur1, uv).xyz * scale1 + bias1;
-  vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
-  c += b1 * 0.35 + b2 * (0.35 + 0.2 * q2);
-  c = c / (1.0 + 0.25 * c);
+      comp: `${HEAD}
+ shader_body {
+  vec2 p = (uv - 0.5) * aspect.xy;
+  float en = q2;
+  float tt = time * 0.03;
+  vec3 neb = vec3(0.004, 0.006, 0.02);
+  float dsum = 0.0;
+  for (int j = 0; j < 4; j++) {
+    float fj = float(j);
+    float cyc = fj / 4.0 + q4;
+    float z = fract(cyc);
+    float seed = floor(cyc) * 7.31 + fj * 3.7;
+    float scale = mix(3.4, 0.14, z * z);
+    vec2 drift = vec2((h11(seed) - 0.5) * 0.9, (h11(seed + 1.0) - 0.5) * 0.5) * time * 0.04;
+    vec2 lp = rot2(seed + time * 0.02 * (h11(seed + 2.0) - 0.5)) * p * scale
+            + vec2(h11(seed + 3.0), h11(seed + 4.0)) * 60.0 + drift;
+    // swirl: the cloud is pushed around by its own slowly evolving flow
+    vec2 w = vec2(fbm(lp * 1.1 + vec2(tt, -tt * 0.7)), fbm(lp * 1.1 + vec2(5.2 - tt * 0.6, 1.3 + tt))) - 0.5;
+    float n = fbm(lp * 1.4 + w * 2.4 + vec2(0.0, tt * 0.5));
+    float dens = smoothstep(0.48, 0.78, n) * (0.8 + 0.5 * (w.x + 0.5) * (w.y + 0.5));
+    float haze = smoothstep(0.3, 0.7, n) * 0.22;              // soft glow around each cloud
+    float op = smoothstep(0.0, 0.28, z) * (1.0 - smoothstep(0.68, 1.0, z));
+    // iridescent, like sun dogs: one shared rainbow field, so strata that
+    // overlap agree on colour; rainbow fringes along the cloud edges
+    float hue = n * 2.6 + w.x * 1.2 + time * 0.035 + length(p) * 1.4 + p.x * 0.6;
+    hue += 0.18 * vnoise(lp * 5.0 + vec2(time * 0.35, -time * 0.25));   // the colours shimmer
+    vec3 rainbow = mix(0.5 + 0.5 * cos(6.2831853 * (hue + vec3(0.0, 0.33, 0.67))), vec3(1.0), 0.12);
+    float fringe = exp(-pow((n - 0.6) / 0.035, 2.0));
+    vec3 fr = 0.5 + 0.5 * cos(6.2831853 * (hue * 1.6 + 0.3 + vec3(0.0, 0.33, 0.67)));
+    neb += (rainbow * (dens * (0.95 + 0.25 * en) + haze) + fr * fringe * 0.35 * (0.4 + 0.6 * dens)) * op * 0.9;
+    dsum += dens * op;
+  }
+  vec3 c = neb / (1.0 + 0.3 * neb);         // overlapping strata stay soft, never flare white
   vec2 d = uv - 0.5;
-  c *= mix(0.55, 1.0, smoothstep(0.85, 0.25, length(d * vec2(1.0, 1.1))));
+  c *= mix(0.7, 1.0, smoothstep(0.85, 0.25, length(d * vec2(1.0, 1.1))));
   ret = clamp(c, 0.0, 1.0);
  }`
     }
@@ -2462,7 +2441,7 @@ function fillVisuals() {
         <span class="lb-txt"><span class="lb-t">${esc(k)}</span>
           ${banned.has(k) ? '<span class="lb-a">dropped · too bright</span>' : isFloral(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">floral · melts the pictures</span></span>'
           : isKaleido(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">kaleido · dichroic glass</span></span>'
-          : isCosmos(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">cosmos · star flight</span></span>' : ''}</span>
+          : isCosmos(k) ? '<span class="lb-a"><span class="lb-tag" style="margin:0">cosmos · flight through iridescent clouds</span></span>' : ''}</span>
       </button>
       ${voteButtons(vVoteOf(k), 'data-vvote', k)}
     </li>`).join('')
