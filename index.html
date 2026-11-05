@@ -507,6 +507,11 @@ const DUO_PRESET = 'Floral · Bloom Chintz';
 // Visuals that run the two-paper melt (Starlit Chintz is Bloom Chintz with stars;
 // Flyover's landscape reshapes as its paper melts into the next).
 const DUO_PRESETS = new Set([DUO_PRESET, 'Floral · Starlit Chintz', 'Floral · Flyover']);
+// Flyover runs its own longer cycle, counted from when it comes on screen:
+// bloom, swoop down, fly, climb back, melt to the next paper.
+const FLY_PRESET = 'Floral · Flyover';
+const FLY_PERIOD = 90;
+let flyT0 = 0;
 const isDuo = k => DUO_PRESETS.has(k);
 
 const FLORAL_PRESETS = (() => {
@@ -675,101 +680,211 @@ vec2 h22(vec2 p) { return vec2(h21(p), h21(p + 17.31)); }`;
       glow: 0.4
     }),
 
-    // The paper becomes a landscape: brightness is height, so pale flowers
-    // rise into peaks and spires and dark grounds sink into valleys. We fly
-    // low over it on a winding course, banking into the turns, climbing and
-    // diving, under a starry dusk sky. When the paper melts into the next
-    // one, the land itself reshapes. Ray-marched fresh every frame.
+    // One long cycle (FLY_PERIOD seconds, counted from when it comes on):
+    //   bloom   the paper seen flat from above, blooming, under a field of stars
+    //   swoop   the camera sinks toward it as the paper rises into land
+    //           (brightness is height), then tilts up to the horizon
+    //   fly     a random, smooth meander over the land: banking, climbing,
+    //           skimming, glancing around, steered back whenever it strays
+    //   climb   back up and round to look straight down; the land flattens
+    //   melt    liquid chintz melts the paper into the next one, then clears
+    // The stars are real points in the air at several heights, so they slide
+    // past with parallax as the camera moves; they're drawn into the scene.
     'Floral · Flyover': make({
-      base: { zoom: 1, warp: 0, wrap: 1 },
-      init: 'avg = 1; last = 0; pulse = 0; fly = 0;',
-      frame: `per = ${DUO_PERIOD};
-  cyc = floor(time / per);
-  phs = time / per - cyc;
-  mt = min(max((phs - 0.62) / 0.38, 0), 1);
+      base: { zoom: 1.004, warp: 0, wrap: 1 },
+      init: 'avg = 1; last = 0; pulse = 0; t0 = time; px = 0; pz = 0; yaw = 0; turn = 0; tgt = 0; lk = 0; lkT = 0; nxt = 0;',
+      frame: `per = ${FLY_PERIOD};
+  tm = time - t0;
+  cyc = floor(tm / per);
+  ph = tm / per - cyc;
+  dt = 1 / max(fps, 15);
+  mt = min(max((ph - 0.86) / 0.11, 0), 1);
   mt = mt * mt * (3 - 2 * mt);
+  melt = 4 * mt * (1 - mt);
   q9 = mt;
   q10 = cyc % 2;
-  fly = fly + (0.32 + 0.22 * min(max(q2 - 0.6, 0), 1.6) + 0.35 * pulse) / max(fps, 15);
-  q4 = fly;`,
+  sw = min(max((ph - 0.13) / 0.14, 0), 1);
+  rs = min(max((ph - 0.75) / 0.11, 0), 1);
+  e1 = min(sw * 1.4, 1); e1 = e1 * e1 * (3 - 2 * e1);
+  e2 = min(max((sw - 0.35) / 0.65, 0), 1); e2 = e2 * e2 * (3 - 2 * e2);
+  r1 = min(rs * 1.4, 1); r1 = r1 * r1 * (3 - 2 * r1);
+  r2 = min(max((rs - 0.3) / 0.7, 0), 1); r2 = r2 * r2 * (3 - 2 * r2);
+  fa = e1 * (1 - r2);
+  fp = e2 * (1 - r1);
+  rst = below(ph, 0.13);
+  px = if(rst, 0, px); pz = if(rst, 0, pz); yaw = if(rst, 0, yaw);
+  turn = if(rst, 0, turn); lk = if(rst, 0, lk);
+  spd = (0.5 + 0.25 * min(max(q2 - 0.6, 0), 1.6) + 0.3 * pulse) * e1;
+  pick = above(time, nxt);
+  tgt = if(pick, (rand(1) - 0.5) * 1.5, tgt);
+  lkT = if(pick, (rand(1) - 0.5) * 1.1, lkT);
+  nxt = if(pick, time + 3 + rand(5), nxt);
+  dist = sqrt(px * px + pz * pz);
+  home = atan2(-px, -pz);
+  err = home - yaw;
+  err = err - 6.2832 * floor((err + 3.1416) / 6.2832);
+  pull = min(max((dist - 1.3) / 1.0, 0), 1);
+  want = tgt * (1 - pull) + err * 1.1 * pull;
+  turn = turn + (want - turn) * min(dt * 0.9, 1);
+  yaw = yaw + turn * dt * 0.9 * e1;
+  yaw = if(below(ph, 0.75), yaw - 6.2832 * floor((yaw + 3.1416) / 6.2832), yaw);
+  px = px + sin(yaw) * spd * dt;
+  pz = pz + cos(yaw) * spd * dt;
+  lk = lk + (lkT - lk) * min(dt * 0.4, 1);
+  altF = 1.0 + 1.6 * pow(0.5 + 0.5 * sin(tm * 0.06 + 1), 1.4) + 0.08 * sin(tm * 0.29);
+  pitF = -(0.35 + 0.18 * altF) + 0.06 * sin(tm * 0.23);
+  H0 = 4.68;
+  q11 = px * fa;
+  q12 = pz * fa;
+  q13 = H0 + (altF - H0) * fa;
+  q14 = (yaw + lk) * fp;
+  q15 = -1.5707 + (pitF + 1.5707) * fp;
+  q16 = min(max(-turn * 0.6, -0.5), 0.5) * fp;
+  q17 = fa;
+  bl = 1 - fa;
+  q18 = bl;
+  q1 = (0.08 - 0.055 * melt + 0.045 * q3) * bl + 0.85 * fa;
+  q8 = (0.35 + 2.4 * melt) * bl;
+  zoom = 1 + bl * (0.004 + 0.014 * min(max(bass_att - 0.9, 0), 1.2));
+  rot = bl * 0.0025 * sin(time * 0.11);`,
+      pixel: 'zoom = zoom + 0.006 * rad * q3 * q18;',
       head: `uniform sampler2D sampler_flora2;
+#define SC 6.0
+#define FOC 0.78
 float h21(vec2 p) { p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }
-// the paper tiles as a mirror, so the land never ends and has no seams
-vec2 mir(vec2 w) { vec2 f = fract(w * vec2(0.42, 0.24) * 0.5) * 2.0; return 1.0 - abs(1.0 - f); }
-vec3 paperAt(vec2 u, float lod) {
-  vec3 a = textureLod(sampler_flora, u, lod).xyz, b = textureLod(sampler_flora2, u, lod).xyz;
-  return q10 < 0.5 ? mix(a, b, q9) : mix(b, a, q9);
+// world to paper: one paper spans SC*aspect.x by SC, centred; beyond it the
+// paper mirrors, so the land goes on without seams
+vec2 picUV(vec2 w) {
+  vec2 u = vec2(w.x / (SC * aspect.x), 1.0 - w.y / SC);
+  vec2 f = fract(u * 0.5) * 2.0;
+  return 1.0 - abs(1.0 - f);
 }
-float lumAt(vec2 u, float lod) {
-  // only touch the second paper while a melt is actually under way
-  vec3 w = vec3(0.299, 0.587, 0.114);
-  bool first = q10 < 0.5;
-  float a = first ? dot(textureLod(sampler_flora, u, lod).xyz, w) : dot(textureLod(sampler_flora2, u, lod).xyz, w);
-  if (q9 > 0.001) {
-    float b = first ? dot(textureLod(sampler_flora2, u, lod).xyz, w) : dot(textureLod(sampler_flora, u, lod).xyz, w);
-    a = mix(a, b, q9);
-  }
-  return a;
+// height: dark and strongly coloured parts rise into mountains, pale
+// grounds sink into valleys
+float rise(vec3 c) {
+  float l = dot(c, vec3(0.299, 0.587, 0.114));
+  float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b));
+  float sat = (mx - mn) / max(mx, 0.02);
+  return clamp(0.72 * (1.0 - l) + 0.5 * sat, 0.0, 1.0);
 }
+float hShow(vec2 u, float lod) {
+  return q10 < 0.5 ? rise(textureLod(sampler_flora, u, lod).xyz) : rise(textureLod(sampler_flora2, u, lod).xyz);
+}
+#define TOP 0.56
 float landH(vec2 w) {
-  vec2 u = mir(w);
-  float big = lumAt(u, 3.2), fine = lumAt(u, 0.6);
-  return (0.42 * big * big + 0.09 * fine) * (0.88 + 0.12 * q3);
+  vec2 u = picUV(w);
+  float big = hShow(u, 3.2), fine = hShow(u, 0.6);
+  return (0.42 * big * big + 0.09 * fine) * (0.88 + 0.12 * q3) * q17;
 }
-vec2 course(float z) { return vec2(1.7 * sin(z * 0.19) + 0.8 * sin(z * 0.47 + 1.3), z); }`,
+vec3 paperCol(vec2 u, float lod, float wt) {
+  vec3 a = textureLod(sampler_flora, u, lod).xyz, b = textureLod(sampler_flora2, u, lod).xyz;
+  return q10 < 0.5 ? mix(a, b, wt) : mix(b, a, wt);
+}`,
       warp: `  vec2 sp = (vec2(uv_orig.x, 1.0 - uv_orig.y) - 0.5) * aspect.xy;   // screen up is +y
-  float T = q4;
-  // the camera: winds along the course, rides the land below with a
-  // slowly swinging altitude (skim, then soar), banks into its turns
-  vec2 c0 = course(T), c1 = course(T + 0.7), cb = course(T - 0.7);
-  float ground = max(max(landH(c0), landH(course(T + 0.35))), landH(c1));
-  float alt = 0.07 + 0.38 * pow(0.5 + 0.5 * sin(time * 0.045 + 1.0), 1.6) + 0.05 * sin(time * 0.31);
-  vec3 ro = vec3(c0.x, ground + alt, c0.y);
-  vec3 fw = normalize(vec3(c1.x - c0.x, -(0.1 + 0.55 * alt), c1.y - c0.y));
-  float bank = clamp((c1.x - 2.0 * c0.x + cb.x) * 2.2, -0.55, 0.55);
-  vec3 rt = normalize(cross(fw, vec3(0.0, 1.0, 0.0)));
-  vec3 up = cross(rt, fw);
-  vec3 r2 = rt * cos(bank) + up * sin(bank), u2 = up * cos(bank) - rt * sin(bank);
-  vec3 rd = normalize(fw * 0.78 + r2 * sp.x + u2 * sp.y);
-  // march to the land
-  float t = 0.02, lt = 0.02, ld = 1.0;
+  // liquid chintz: the flow that smears and melts the paper (top-down phases)
+  vec2 n0 = texture(sampler_noise_lq, uv * 0.07 + vec2(time * 0.011, time * 0.007)).xy - 0.5;
+  vec2 m0 = texture(sampler_noise_lq, uv * 0.19 - vec2(time * 0.017, 0.0)).xy - 0.5;
+  vec2 flow = (n0 * 0.008 + m0 * 0.004) * q8;
+  vec3 fb = texture(sampler_main, uv + flow).xyz;
+  sp += flow * 2.5 * aspect.xy;
+
+  // the camera
+  vec2 cxz = vec2(SC * aspect.x, SC) * 0.5 + vec2(q11, q12);
+  float yaw = q14, pit = q15, rl = q16;
+  // a steady camera: its height is its own, never pushed about by the land
+  vec3 ro = vec3(cxz.x, q13, cxz.y);
+  vec3 fw = vec3(sin(yaw) * cos(pit), sin(pit), cos(yaw) * cos(pit));
+  vec3 rt = vec3(cos(yaw), 0.0, -sin(yaw));
+  vec3 up = cross(fw, rt);
+  vec3 r2 = rt * cos(rl) + up * sin(rl), u2 = up * cos(rl) - rt * sin(rl);
+  vec3 rd = normalize(fw * FOC + r2 * sp.x + u2 * sp.y);
+
+  // find the land
+  float t = 1e4;
   bool hit = false;
-  for (int i = 0; i < 80; i++) {
-    vec3 p = ro + rd * t;
-    float d = p.y - landH(p.xz);
-    if (d < 0.0015 * t) { hit = true; break; }
-    lt = t; ld = d;
-    t += max(0.008, d * 0.45) * (1.0 + 0.035 * t);
-    if (t > 10.0) break;
+  if (q17 < 0.001) {
+    if (rd.y < -1e-4) { t = ro.y / -rd.y; hit = true; }      // flat paper: exact
+  } else {
+    // skip straight down to the tallest the land can be
+    float tt = rd.y < 0.0 ? max((ro.y - TOP * q17) / -rd.y, 0.02) : 20.0;
+    float lt = tt, ld = 1.0;
+    for (int i = 0; i < 80; i++) {
+      vec3 p = ro + rd * tt;
+      float d = p.y - landH(p.xz);
+      if (d < 0.0015 * tt) { hit = true; break; }
+      lt = tt; ld = d;
+      tt += max(0.008, d * 0.45) * (1.0 + 0.035 * tt);
+      if (tt > 16.0) break;
+    }
+    if (hit) {
+      vec3 p2 = ro + rd * tt;
+      float d2 = p2.y - landH(p2.xz);
+      tt = mix(lt, tt, ld / max(ld - d2, 1e-4));
+    }
+    t = tt;
   }
-  // dusk sky, with stars
+
+  // dusk sky, with far stars
   vec3 sky = mix(vec3(0.05, 0.05, 0.11), vec3(0.18, 0.12, 0.2), pow(1.0 - max(rd.y, 0.0), 4.0));
   vec2 sd = vec2(atan(rd.x, rd.z) * 60.0, rd.y * 120.0);
-  vec2 cell = floor(sd), f = fract(sd) - 0.5;
+  vec2 cell = floor(sd), cf = fract(sd) - 0.5;
   float hs = h21(cell);
-  sky += vec3(0.85, 0.9, 1.0) * step(0.9, hs) * exp(-dot(f, f) * 40.0) * (0.6 + 0.4 * sin(time * (1.5 + 3.0 * hs) + hs * 40.0)) * smoothstep(-0.05, 0.1, rd.y);
+  sky += vec3(0.85, 0.9, 1.0) * step(0.9, hs) * exp(-dot(cf, cf) * 40.0)
+       * (0.6 + 0.4 * sin(time * (1.5 + 3.0 * hs) + hs * 40.0)) * smoothstep(-0.05, 0.1, rd.y);
   vec3 col = sky;
   if (hit) {
-    // settle the hit between the last two steps
-    float d2 = (ro + rd * t).y - landH((ro + rd * t).xz);
-    t = mix(lt, t, ld / max(ld - d2, 1e-4));
     vec3 p = ro + rd * t;
-    float e = 0.006 + 0.002 * t;
-    vec3 n = normalize(vec3(landH(p.xz - vec2(e, 0.0)) - landH(p.xz + vec2(e, 0.0)), 2.0 * e,
-                            landH(p.xz - vec2(0.0, e)) - landH(p.xz + vec2(0.0, e))));
-    vec3 pc = paperAt(mir(p.xz), clamp(log2(t * 6.0), 0.0, 5.0));
+    vec3 nrm = vec3(0.0, 1.0, 0.0);
+    if (q17 > 0.001) {
+      float e = 0.006 + 0.002 * t;
+      nrm = normalize(vec3(landH(p.xz - vec2(e, 0.0)) - landH(p.xz + vec2(e, 0.0)), 2.0 * e,
+                           landH(p.xz - vec2(0.0, e)) - landH(p.xz + vec2(0.0, e))));
+    }
+    float nz = texture(sampler_noise_lq, uv_orig * 0.045 + vec2(0.37, time * 0.004)).x;
+    float wt = smoothstep(nz * 0.6, nz * 0.6 + 0.4, q9);
+    float lod = log2(max(t * 0.15 / max(abs(dot(rd, nrm)), 0.25), 1.0));
+    vec3 pc = paperCol(picUV(p.xz), lod, wt) * 0.75;           // dusk over the paper
     vec3 L = normalize(vec3(-0.5, 0.65, 0.4));
-    float dif = max(dot(n, L), 0.0);
-    float rim = pow(1.0 - max(dot(n, -rd), 0.0), 3.0);
-    col = pc * (0.35 + 1.05 * dif) + vec3(0.35, 0.3, 0.5) * rim * 0.35;
-    col *= 0.85 + 0.3 * q3 * smoothstep(0.3, 0.8, p.y);       // peaks catch the beat
-    col = mix(col, sky * 1.4 + vec3(0.03, 0.02, 0.05), 1.0 - exp(-t * 0.13));  // haze into the distance
+    float dif = max(dot(nrm, L), 0.0);
+    float rim = pow(1.0 - max(dot(nrm, -rd), 0.0), 3.0);
+    vec3 lit = pc * (0.35 + 1.05 * dif) + vec3(0.35, 0.3, 0.5) * rim * 0.35;
+    lit *= 0.85 + 0.3 * q3 * smoothstep(0.3, 0.8, p.y);
+    col = mix(pc, lit, q17);
+    col = mix(col, sky * 1.4 + vec3(0.03, 0.02, 0.05), (1.0 - exp(-t * 0.13)) * q17);
   }
-  ret = col;`,
+
+  // stars in the air: sheets of points at several heights, each star a
+  // real place, so they drift past with the camera's height and pitch
+  vec3 st = vec3(0.0);
+  for (int k = 0; k < 6; k++) {
+    float fk = float(k);
+    float hy = 0.45 + 0.25 * fk + 0.16 * fk * fk;
+    float ts = (hy - ro.y) / rd.y;
+    if (abs(rd.y) < 1e-4 || ts < 0.02 || ts > t) continue;
+    vec3 q = ro + rd * ts;
+    float cs = 0.45 + 0.15 * fk;
+    vec2 g = q.xz / cs + fk * 17.3;
+    vec2 id = floor(g);
+    float hk = h21(id + fk * 7.1);
+    if (hk < 0.4) continue;
+    vec2 at = (id + 0.2 + 0.6 * vec2(h21(id + 3.1), h21(id + 9.7)) - fk * 17.3) * cs;
+    vec3 s3 = vec3(at.x, hy, at.y) - ro;
+    float along = dot(s3, rd);
+    if (along < 0.02) continue;
+    float ang = length(s3 - rd * along) / along;
+    float ar = max(0.011 / along, 0.0016);
+    float b = 1.3 * exp(-ang * ang / (ar * ar)) + 0.22 * ar * ar / (ang * ang + ar * ar);
+    float tw = 0.7 + 0.3 * sin(time * (2.0 + 3.0 * hk) + hk * 50.0);
+    vec3 sc3 = hk < 0.8 ? vec3(0.78, 0.86, 1.0) : hk < 0.93 ? vec3(1.0, 0.97, 0.92) : vec3(1.0, 0.82, 0.62);
+    st += sc3 * b * tw * (0.9 + 0.5 * q3) * smoothstep(0.02, 0.15, along) / (1.0 + 0.06 * along);
+  }
+
+  vec3 scene = col + st;
+  ret = mix(fb * 0.997, scene, q1);`,
       comp: `  vec3 c = texture(sampler_main, uv).xyz;
   vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
-  c += 0.12 * b2 * (0.6 + 0.4 * q2);`,
-      glow: 0.3
+  c += 0.16 * b2 * (0.6 + 0.4 * q2) * q18 + 0.08 * b2 * (1.0 - q18);`,
+      glow: 0.35
     }),
 
     // The paper is pulled into a slow spiral that tightens toward the centre.
@@ -1662,7 +1777,8 @@ function pickPreset() {
 function restartCycle() {
   clearInterval(cycle); cycle = null;
   // Bloom Chintz stays for two and a half of its melt cycles, so you see it melt twice.
-  const hold = isDuo(current) ? DUO_PERIOD * 2500 : CFG.presetHold;
+  const hold = current === FLY_PRESET ? (FLY_PERIOD * 2 - 4) * 1000     // two flights
+             : isDuo(current) ? DUO_PERIOD * 2500 : CFG.presetHold;
   if (viz && autoCycle) cycle = setInterval(() => roll(CFG.blend), hold);
 }
 
@@ -1672,6 +1788,7 @@ function showPreset(k, blend = 2.5) {
   document.body.classList.toggle('viz-floral', isFloral(k));
   document.body.classList.toggle('viz-kaleido', isKaleido(k) || isCosmos(k));
   if (isFloral(k) && !curPic && pics.length) showPicture(pickPic());
+  if (viz && k === FLY_PRESET) flyT0 = viz.renderer?.time ?? 0;
   if (viz && isDuo(k)) startDuo();
   else if (isFloral(k) && curPic && slots[0].pic !== curPic) loadSlot(0, curPic);
   paintVizBar();
@@ -1973,8 +2090,11 @@ function loadSlot(i, p, cycle = -1) {
 // It reads the visualizer's own clock, the same `time` the preset sees.
 function duoClock() {
   const t = viz?.renderer?.time ?? 0;
-  const cyc = Math.floor(t / DUO_PERIOD);
-  return { cyc, s: cyc % 2, ph: t / DUO_PERIOD - cyc };
+  const fly = current === FLY_PRESET, per = fly ? FLY_PERIOD : DUO_PERIOD;
+  const r = fly ? t - flyT0 : t;
+  const cyc = Math.floor(r / per);
+  // swap the picture bar to the new paper once the melt is mostly through
+  return { cyc, s: cyc % 2, ph: r / per - cyc, swap: fly ? 0.93 : 0.82 };
 }
 
 function showPicture(p) {
@@ -2004,13 +2124,13 @@ function startDuo() {
 }
 setInterval(() => {
   if (!viz || !isDuo(current) || document.hidden || !pics.length) return;
-  const { cyc, s, ph } = duoClock();
+  const { cyc, s, ph, swap } = duoClock();
   const vis = slots[s], hid = slots[1 - s];
   if (!vis.pic) loadSlot(s, curPic || pickPic(), cyc);
   if (hid.cycle !== cyc + 1 && (ph < 0.55 || !hid.img)) {
     loadSlot(1 - s, picAuto ? pickPic() : (vis.pic || curPic), cyc + 1);
   }
-  const showing = ph > 0.82 ? hid.pic : vis.pic;
+  const showing = ph > swap ? hid.pic : vis.pic;
   if (showing && showing !== curPic) { curPic = showing; paintPicBar(); markNowPic(); }
 }, 400);
 
