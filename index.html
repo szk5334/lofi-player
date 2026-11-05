@@ -692,7 +692,7 @@ vec2 h22(vec2 p) { return vec2(h21(p), h21(p + 17.31)); }`;
     // past with parallax as the camera moves; they're drawn into the scene.
     'Floral · Flyover': make({
       base: { zoom: 1.004, warp: 0, wrap: 1 },
-      init: 'avg = 1; last = 0; pulse = 0; t0 = time; px = 0; pz = 0; yaw = 0; turn = 0; tgt = 0; lk = 0; lkT = 0; nxt = 0;',
+      init: 'avg = 1; last = 0; pulse = 0; t0 = time; px = 0; pz = 0; yaw = 0; turn = 0; turn1 = 0; tgt = 0; lk = 0; lk1 = 0; lkT = 0; nxt = 0; spS = 0.5; bnk = 0;',
       frame: `per = ${FLY_PERIOD};
   tm = time - t0;
   cyc = floor(tm / per);
@@ -713,33 +713,39 @@ vec2 h22(vec2 p) { return vec2(h21(p), h21(p + 17.31)); }`;
   fp = e2 * (1 - r1);
   rst = below(ph, 0.13);
   px = if(rst, 0, px); pz = if(rst, 0, pz); yaw = if(rst, 0, yaw);
-  turn = if(rst, 0, turn); lk = if(rst, 0, lk);
-  spd = (0.5 + 0.25 * min(max(q2 - 0.6, 0), 1.6) + 0.3 * pulse) * e1;
+  turn = if(rst, 0, turn); turn1 = if(rst, 0, turn1); lk = if(rst, 0, lk); lk1 = if(rst, 0, lk1); bnk = if(rst, 0, bnk);
+  // speed follows the music only slowly: no lurches on the beat
+  spS = spS + (0.5 + 0.2 * min(max(q2 - 0.6, 0), 1.6) - spS) * min(dt * 0.15, 1);
+  spd = spS * e1;
   pick = above(time, nxt);
-  tgt = if(pick, (rand(1) - 0.5) * 1.5, tgt);
-  lkT = if(pick, (rand(1) - 0.5) * 1.1, lkT);
-  nxt = if(pick, time + 3 + rand(5), nxt);
+  tgt = if(pick, (rand(1) - 0.5) * 0.7, tgt);
+  lkT = if(pick, (rand(1) - 0.5) * 0.45, lkT);
+  nxt = if(pick, time + 6 + rand(6), nxt);
   dist = sqrt(px * px + pz * pz);
   home = atan2(-px, -pz);
   err = home - yaw;
   err = err - 6.2832 * floor((err + 3.1416) / 6.2832);
   pull = min(max((dist - 1.3) / 1.0, 0), 1);
-  want = tgt * (1 - pull) + err * 1.1 * pull;
-  turn = turn + (want - turn) * min(dt * 0.9, 1);
+  want = tgt * (1 - pull) + min(max(err * 0.5, -0.4), 0.4) * pull;
+  // two stages of easing, so turns start and end softly
+  turn1 = turn1 + (want - turn1) * min(dt * 0.35, 1);
+  turn = turn + (turn1 - turn) * min(dt * 0.35, 1);
   yaw = yaw + turn * dt * 0.9 * e1;
   yaw = if(below(ph, 0.75), yaw - 6.2832 * floor((yaw + 3.1416) / 6.2832), yaw);
   px = px + sin(yaw) * spd * dt;
   pz = pz + cos(yaw) * spd * dt;
-  lk = lk + (lkT - lk) * min(dt * 0.4, 1);
-  altF = 1.0 + 1.6 * pow(0.5 + 0.5 * sin(tm * 0.06 + 1), 1.4) + 0.08 * sin(tm * 0.29);
-  pitF = -(0.35 + 0.18 * altF) + 0.06 * sin(tm * 0.23);
+  lk1 = lk1 + (lkT - lk1) * min(dt * 0.2, 1);
+  lk = lk + (lk1 - lk) * min(dt * 0.2, 1);
+  bnk = bnk + (min(max(-turn * 0.35, -0.2), 0.2) - bnk) * min(dt * 0.4, 1);
+  altF = 1.0 + 1.6 * (0.5 + 0.5 * sin(tm * 0.045 + 1));
+  pitF = -(0.35 + 0.18 * altF) + 0.025 * sin(tm * 0.09);
   H0 = 4.68;
   q11 = px * fa;
   q12 = pz * fa;
   q13 = H0 + (altF - H0) * fa;
   q14 = (yaw + lk) * fp;
   q15 = -1.5707 + (pitF + 1.5707) * fp;
-  q16 = min(max(-turn * 0.6, -0.5), 0.5) * fp;
+  q16 = bnk * fp;
   q17 = fa;
   bl = 1 - fa;
   q18 = bl;
@@ -774,7 +780,7 @@ float hShow(vec2 u, float lod) {
 float landH(vec2 w) {
   vec2 u = picUV(w);
   float big = hShow(u, 3.2), fine = hShow(u, 0.6);
-  return (0.42 * big * big + 0.09 * fine) * (0.88 + 0.12 * q3) * q17;
+  return (0.42 * big * big + 0.09 * fine) * q17;
 }
 vec3 paperCol(vec2 u, float lod, float wt) {
   vec3 a = textureLod(sampler_flora, u, lod).xyz, b = textureLod(sampler_flora2, u, lod).xyz;
