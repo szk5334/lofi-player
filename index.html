@@ -504,6 +504,9 @@ const CFG = {
 // Bloom Chintz melts to the next paper on this cycle; the player keeps time with it.
 const DUO_PERIOD = 30;
 const DUO_PRESET = 'Floral · Bloom Chintz';
+// Visuals that run the two-paper melt (Starlit Chintz is Bloom Chintz with stars).
+const DUO_PRESETS = new Set([DUO_PRESET, 'Floral · Starlit Chintz']);
+const isDuo = k => DUO_PRESETS.has(k);
 
 const FLORAL_PRESETS = (() => {
   const off = () => Array.from({ length: 4 }, () => ({ baseVals: { enabled: 0 }, init_eqs_eel: '', frame_eqs_eel: '' }));
@@ -521,6 +524,34 @@ const FLORAL_PRESETS = (() => {
   c *= mix(0.5, 1.0, smoothstep(0.78, 0.18, length(d)));
   c = c / (1.0 + 0.35 * c);
   ret = c * 0.96;`;
+
+  // Stars flying out of the middle (from Cosmos · Star Sea), drawn over a
+  // finished frame. Needs q3 = beat and q4 = flight phase.
+  const STARS_HEAD = `
+float h21(vec2 p) { p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }
+vec2 h22(vec2 p) { return vec2(h21(p), h21(p + 17.31)); }`;
+  const STARS = `
+  vec2 sp0 = (uv - 0.5) * aspect.xy;
+  vec3 st = vec3(0.0);
+  for (int i = 0; i < 6; i++) {
+    float fi = float(i);
+    float z = fract(fi / 6.0 + q4);
+    float sc = mix(26.0, 0.9, z * z);
+    vec2 sp = sp0 * sc + vec2(fi * 13.7, fi * 7.3);
+    vec2 id = floor(sp);
+    vec2 f = fract(sp) - 0.5;
+    float hs = h21(id + fi * 11.0);
+    vec2 dd = f - (h22(id + fi * 31.0) - 0.5) * 0.7;
+    float r2 = dot(dd, dd);
+    float core = exp(-r2 / (0.0006 + 0.0012 * hs));
+    float halo = 0.0035 / (r2 + 0.0035) * 0.22 * z;
+    float spike = (exp(-abs(dd.x) * 140.0) * exp(-abs(dd.y) * 9.0) + exp(-abs(dd.y) * 140.0) * exp(-abs(dd.x) * 9.0)) * 0.5 * smoothstep(0.6, 1.0, z) * step(0.8, hs);
+    float sb = (core + halo + spike) * step(0.55, hs) * smoothstep(0.0, 0.35, z) * (1.0 - smoothstep(0.88, 1.0, z));
+    float tw = 0.75 + 0.25 * sin(time * (2.0 + 3.0 * hs) + hs * 50.0);
+    vec3 sc3 = hs < 0.7 ? vec3(0.75, 0.85, 1.0) : hs < 0.88 ? vec3(1.0, 0.97, 0.92) : vec3(1.0, 0.8, 0.6);
+    st += sc3 * sb * tw * (0.9 + 0.5 * q3);
+  }
+  ret = ret * (1.0 - 0.6 * clamp(st, 0.0, 1.0)) + st;   // the star darkens what's under it a touch, then shines`;
 
   // Shared beat tracker: q2 = smoothed energy (about 1), q3 = beat pulse 0..1.
   const BEAT = `
@@ -544,7 +575,7 @@ const FLORAL_PRESETS = (() => {
     frame_eqs_eel: BEAT + '\n' + (o.frame || ''),
     pixel_eqs_eel: o.pixel || '',
     warp: `uniform sampler2D sampler_flora;\n${o.head || ''}\n shader_body {\n  ${PIC}\n${o.warp}\n }`,
-    comp: ` shader_body {\n${o.comp || '  vec3 c = texture(sampler_main, uv).xyz;'}\n${finish(o.glow)}\n }`
+    comp: `${o.chead || ''} shader_body {\n${o.comp || '  vec3 c = texture(sampler_main, uv).xyz;'}\n${finish(o.glow)}${o.after || ''}\n }`
   });
 
   return {
@@ -596,6 +627,50 @@ const FLORAL_PRESETS = (() => {
       comp: `  vec3 c = texture(sampler_main, uv).xyz;
   vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
   c += 0.16 * b2 * (0.6 + 0.4 * q2);`,
+      glow: 0.4
+    }),
+
+    // Bloom Chintz at dusk, with Star Sea's stars flying out of the middle
+    // over the melting papers.
+    'Floral · Starlit Chintz': make({
+      base: { zoom: 1.006, warp: 0.05 },
+      init: 'avg = 1; last = 0; pulse = 0; ph = 0;',
+      frame: `per = ${DUO_PERIOD};
+  cyc = floor(time / per);
+  phs = time / per - cyc;
+  mt = min(max((phs - 0.62) / 0.38, 0), 1);
+  mt = mt * mt * (3 - 2 * mt);
+  melt = 4 * mt * (1 - mt);
+  q9 = mt;
+  q10 = cyc % 2;
+  q8 = 0.35 + 2.4 * melt;
+  zoom = 1.004 + 0.014 * min(max(bass_att - 0.9, 0), 1.2);
+  rot = 0.0025 * sin(time * 0.11);
+  q1 = 0.08 - 0.055 * melt + 0.045 * q3;
+  ph = ph + (0.24 + 0.14 * min(max(q2 - 0.6, 0), 1.6) + 0.2 * pulse) / max(fps, 15);
+  q4 = ph;`,
+      pixel: 'zoom = zoom + 0.006 * rad * q3;',
+      head: 'uniform sampler2D sampler_flora2;',
+      warp: `  vec2 n = texture(sampler_noise_lq, uv * 0.07 + vec2(time * 0.011, time * 0.007)).xy - 0.5;
+  vec2 m2 = texture(sampler_noise_lq, uv * 0.19 - vec2(time * 0.017, 0.0)).xy - 0.5;
+  vec2 flow = (n * 0.008 + m2 * 0.004) * q8;
+  vec3 fb = texture(sampler_main, uv + flow).xyz;
+  // patchy dissolve from the showing paper into the next one
+  float nz = texture(sampler_noise_lq, uv_orig * 0.045 + vec2(0.37, time * 0.004)).x;
+  float wt = smoothstep(nz * 0.6, nz * 0.6 + 0.4, q9);
+  vec2 pw = pu + flow * 2.5;
+  vec3 A = texture(sampler_flora, pw).xyz;
+  vec3 B = texture(sampler_flora2, pw).xyz;
+  vec3 pic = mix(A, B, q10 < 0.5 ? wt : 1.0 - wt);
+  ret = mix(fb * 0.997, pic, q1);`,
+      chead: STARS_HEAD,
+      comp: `  vec3 c = texture(sampler_main, uv).xyz;
+  vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
+  c += 0.16 * b2 * (0.6 + 0.4 * q2);
+  c *= 0.72;                                  // dusk over the paper, so the stars read`,
+      // stars go on last, in the final image only: they never feed back
+      // into the chintz, so they stay sharp and never smear the paper
+      after: STARS,
       glow: 0.4
     }),
 
@@ -1489,7 +1564,7 @@ function pickPreset() {
 function restartCycle() {
   clearInterval(cycle); cycle = null;
   // Bloom Chintz stays for two and a half of its melt cycles, so you see it melt twice.
-  const hold = current === DUO_PRESET ? DUO_PERIOD * 2500 : CFG.presetHold;
+  const hold = isDuo(current) ? DUO_PERIOD * 2500 : CFG.presetHold;
   if (viz && autoCycle) cycle = setInterval(() => roll(CFG.blend), hold);
 }
 
@@ -1499,7 +1574,7 @@ function showPreset(k, blend = 2.5) {
   document.body.classList.toggle('viz-floral', isFloral(k));
   document.body.classList.toggle('viz-kaleido', isKaleido(k) || isCosmos(k));
   if (isFloral(k) && !curPic && pics.length) showPicture(pickPic());
-  if (viz && k === DUO_PRESET) startDuo();
+  if (viz && isDuo(k)) startDuo();
   else if (isFloral(k) && curPic && slots[0].pic !== curPic) loadSlot(0, curPic);
   paintVizBar();
   markNowVisual();
@@ -1808,7 +1883,7 @@ function showPicture(p) {
   if (!p) return;
   curPic = p;
   paintPicBar(); markNowPic();
-  if (viz && current === DUO_PRESET) { const { cyc, s } = duoClock(); loadSlot(s, p, cyc); }
+  if (viz && isDuo(current)) { const { cyc, s } = duoClock(); loadSlot(s, p, cyc); }
   else loadSlot(0, p);
   restartPicCycle();
 }
@@ -1816,7 +1891,7 @@ function showPicture(p) {
 function restartPicCycle() {
   clearInterval(picCycle); picCycle = null;
   if (picAuto) picCycle = setInterval(() => {
-    if (viz && isFloral(current) && current !== DUO_PRESET && !document.hidden) showPicture(pickPic());
+    if (viz && isFloral(current) && !isDuo(current) && !document.hidden) showPicture(pickPic());
   }, CFG.picHold);
 }
 
@@ -1830,7 +1905,7 @@ function startDuo() {
   loadSlot(1 - s, picAuto ? pickPic() : (curPic || pickPic()), cyc + 1);
 }
 setInterval(() => {
-  if (!viz || current !== DUO_PRESET || document.hidden || !pics.length) return;
+  if (!viz || !isDuo(current) || document.hidden || !pics.length) return;
   const { cyc, s, ph } = duoClock();
   const vis = slots[s], hid = slots[1 - s];
   if (!vis.pic) loadSlot(s, curPic || pickPic(), cyc);
