@@ -367,6 +367,7 @@ body.drawer-open #viz-bar{opacity:0;pointer-events:none}
 <div id="viz-tone" aria-hidden="true"></div>
 <div id="viz-shade" aria-hidden="true"></div>
 <audio id="au" crossorigin="anonymous" preload="none"></audio>
+<audio id="au2" crossorigin="anonymous" preload="none"></audio>
 
 <header id="transport">
   <div class="tp-row">
@@ -1882,7 +1883,11 @@ function showPictureNow(p) {
    Audio
    ═══════════════════════════════════════════════════════════════════ */
 
-const au       = $('au');
+// Two decks, like a DJ: the one playing is "au"; the other takes the next
+// track and the two crossfade. Events only count from the deck playing.
+const decks    = [$('au'), $('au2')];
+let au         = decks[0];
+const onDeck   = (type, fn) => decks.forEach(d => d.addEventListener(type, e => { if (e.currentTarget === au) fn(e); }));
 const playBtn  = $('play');
 const trackEl  = $('track');
 const artistEl = $('artist');
@@ -1994,8 +1999,59 @@ pre.crossOrigin = 'anonymous';
 pre.preload = 'auto';
 pre.muted = true;
 
-function cueTrack(t, record = true) {
-  au.src = t.url;
+/* ─── crossfade ───────────────────────────────────────────────────
+   Near the end of a track the next one starts on the other deck and the
+   two blend with equal-power curves. How early is per track: the library
+   build measures where each ending drops away ("xfade" in the manifest).
+   Skipping by hand blends quickly instead of cutting.
+------------------------------------------------------------------ */
+let xfadeOn = store.get('nd.xfade', true);
+let fadeTimer = 0, xfBroken = false;
+const XF_SKIP = 1.2;
+const xfLen = t => Math.min(10, Math.max(3, Number(t?.xfade) || 6));
+
+function ramp(d, to, secs) {
+  if (!audioCtx || !d._gain) return;
+  const g = d._gain.gain, now = audioCtx.currentTime, from = g.value;
+  g.cancelScheduledValues(now);
+  if (!(secs > 0.02) || Math.abs(to - from) < 0.001) { g.setValueAtTime(to, now); return; }
+  const n = 48, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = i / (n - 1);
+    c[i] = to > from ? from + (to - from) * Math.sin(x * Math.PI / 2)
+                     : to + (from - to) * Math.cos(x * Math.PI / 2);
+  }
+  g.setValueCurveAtTime(c, now, secs);
+}
+
+function cueTrack(t, record = true, fade = 0) {
+  const live = fade > 0 && xfadeOn && !xfBroken && audioCtx && !au.paused && au.getAttribute('src');
+  clearTimeout(fadeTimer);
+  if (live) {
+    const out = au, inn = decks.find(d => d !== out);
+    inn.pause();
+    ramp(inn, 0, 0);
+    inn.src = t.url; inn.xfDone = false;
+    au = inn;
+    inn.play().then(() => {
+      if (au !== inn) return;               // skipped again while it loaded
+      ramp(inn, 1, fade);
+      ramp(out, 0, fade);
+      fadeTimer = setTimeout(() => out.pause(), fade * 1000 + 150);
+    }).catch(err => {
+      if (au !== inn || err?.name === 'AbortError') return;
+      // this browser won't start the second deck on its own: cut instead
+      console.warn('crossfade off:', err);
+      xfBroken = true;
+      au = out; ramp(out, 1, 0);
+      out.src = t.url; out.xfDone = false;
+      out.play().catch(() => {});
+    });
+  } else {
+    for (const d of decks) if (d !== au) { d.pause(); ramp(d, 0, 0); }
+    ramp(au, 1, 0);
+    au.src = t.url; au.xfDone = false;
+  }
   show(t);
   setTime(0, t.seconds || 0);
   seek.disabled = false;
@@ -2008,7 +2064,12 @@ function ensureAudio() {
   if (audioCtx) return;
   // Must be created inside a tap; mobile browsers refuse otherwise.
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  srcNode = audioCtx.createMediaElementSource(au);
+  srcNode = audioCtx.createGain();               // both decks mix here
+  for (const d of decks) {
+    d._gain = audioCtx.createGain();
+    d._gain.gain.value = d === au ? 1 : 0;
+    audioCtx.createMediaElementSource(d).connect(d._gain).connect(srcNode);
+  }
   if (startVisualizer()) srcNode.connect(tap);   // tap already goes to destination
   else srcNode.connect(audioCtx.destination);
 }
@@ -2031,11 +2092,17 @@ async function togglePlay() {
     if (!queue.length) { toast('Nothing matches the play filter'); return; }
     qi = 0; cueTrack(queue[0]);
   }
-  if (au.paused) await playNow(); else au.pause();
+  if (au.paused) await playNow(); else pauseAll();
+}
+
+function pauseAll() {
+  clearTimeout(fadeTimer);
+  for (const d of decks) if (d !== au) d.pause();
+  au.pause();
 }
 playBtn.addEventListener('click', togglePlay);
 
-function nextTrack() {
+function nextTrack(fade = XF_SKIP) {
   if (!ready) return;
   let guard = queue.length + 2;
   do {
@@ -2048,7 +2115,7 @@ function nextTrack() {
   } while (queue.length && !tAllowed(queue[qi]) && --guard > 0);
   const t = queue[qi];
   if (!t || !tAllowed(t)) { toast('Nothing matches the play filter'); return; }
-  cueTrack(t);
+  cueTrack(t, true, fade);
   if (audioCtx) playNow();
 }
 
@@ -2059,7 +2126,7 @@ function prevTrack() {
   const t = hist[hist.length - 1];
   const i = queue.indexOf(t);
   if (i >= 0) qi = i; else queue.splice(qi, 0, t);
-  cueTrack(t, false);
+  cueTrack(t, false, XF_SKIP);
   if (audioCtx) playNow();
 }
 
@@ -2067,12 +2134,12 @@ function prevTrack() {
 function playTrack(t) {
   if (!t) return;
   rebuildQueue(t);
-  cueTrack(t);
+  cueTrack(t, true, XF_SKIP);
   playNow();
 }
 
-nextBtn.addEventListener('click', nextTrack);
-prevBtn.addEventListener('click', prevTrack);
+nextBtn.addEventListener('click', () => nextTrack());
+prevBtn.addEventListener('click', () => prevTrack());
 
 function paintShuffle() {
   shufBtn.setAttribute('aria-pressed', String(shuffleOn));
@@ -2087,13 +2154,13 @@ shufBtn.addEventListener('click', () => {
 });
 paintShuffle();
 
-au.addEventListener('play',  () => {
+onDeck('play',  () => {
   playBtn.setAttribute('aria-pressed','true');
   playBtn.setAttribute('aria-label','Pause');
   document.body.classList.add('is-playing');
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
 });
-au.addEventListener('pause', () => {
+onDeck('pause', () => {
   playBtn.setAttribute('aria-pressed','false');
   playBtn.setAttribute('aria-label','Play');
   document.body.classList.remove('is-playing');
@@ -2101,12 +2168,12 @@ au.addEventListener('pause', () => {
 });
 
 let errors = 0;
-au.addEventListener('ended', () => { errors = 0; nextTrack(); });
-au.addEventListener('playing', () => { errors = 0; });
-au.addEventListener('error', () => {
+onDeck('ended', () => { errors = 0; nextTrack(0); });
+onDeck('playing', () => { errors = 0; });
+onDeck('error', () => {
   if (!au.getAttribute('src')) return;
   if (++errors > 5) { trackEl.textContent = 'Tracks are failing to load'; return; }
-  nextTrack();
+  nextTrack(0);
 });
 
 /* ─── seek bar ───────────────────────────────────────────────────── */
@@ -2123,13 +2190,20 @@ function setTime(now, len) {
   seek.style.setProperty('--p', (p * 100).toFixed(2) + '%');
 }
 const duration = () => (isFinite(au.duration) && au.duration) || nowT?.seconds || 0;
-au.addEventListener('timeupdate', () => {
+onDeck('timeupdate', () => {
   setTime(au.currentTime, duration());
+  // start blending into the next track as this one's ending arrives
+  const left = duration() - au.currentTime;
+  if (xfadeOn && !xfBroken && audioCtx && !au.paused && !au.xfDone && isFinite(au.duration)
+      && left <= xfLen(nowT) && left > 0.5) {
+    au.xfDone = true;
+    nextTrack(Math.min(xfLen(nowT), left));
+  }
   if ('mediaSession' in navigator && navigator.mediaSession.setPositionState && duration()) {
     try { navigator.mediaSession.setPositionState({ duration: duration(), position: Math.min(au.currentTime, duration()), playbackRate: 1 }); } catch {}
   }
 });
-au.addEventListener('loadedmetadata', () => setTime(au.currentTime, duration()));
+onDeck('loadedmetadata', () => setTime(au.currentTime, duration()));
 seek.addEventListener('input', () => {
   dragging = true;
   const len = duration();
@@ -2147,9 +2221,9 @@ if ('mediaSession' in navigator) {
   const ms = navigator.mediaSession;
   const on = (a, f) => { try { ms.setActionHandler(a, f); } catch {} };
   on('play', () => togglePlay());
-  on('pause', () => au.pause());
-  on('nexttrack', nextTrack);
-  on('previoustrack', prevTrack);
+  on('pause', () => pauseAll());
+  on('nexttrack', () => nextTrack());
+  on('previoustrack', () => prevTrack());
   on('seekto', d => { if (d.seekTime != null) au.currentTime = d.seekTime; });
   on('seekbackward', d => { au.currentTime = Math.max(0, au.currentTime - (d.seekOffset || 10)); });
   on('seekforward', d => { au.currentTime = Math.min(duration(), au.currentTime + (d.seekOffset || 10)); });
@@ -2227,7 +2301,7 @@ function exportAll() {
       picture_filter: CATS.filter(c => pfilter[c]).map(name),
       picture_kinds: Object.keys(ptype).filter(k => ptype[k]).map(k => PTYPE[k].toLowerCase()),
       picture_auto_change: picAuto,
-      shuffle: shuffleOn, auto_cycle: autoCycle
+      shuffle: shuffleOn, auto_cycle: autoCycle, crossfade: xfadeOn
     }
   };
   download(`nightdeck-curation-${exported_at.slice(0, 10)}.json`, data);
@@ -2274,6 +2348,11 @@ function renderTracks() {
       <span class="lb-label">Play from</span>
       <div class="lb-row">${chips(CATS, 'data-tf', k => tfilter[k], c)}</div>
       <p class="lb-help">The station plays ${plural(playing, 'track')} from the groups you turn on. Tap any track below to play it anyway.</p>
+    </div>
+    <div class="lb-sec">
+      <span class="lb-label">Playback</span>
+      <div class="lb-row"><button class="chip" data-xf aria-pressed="${xfadeOn}">Crossfade</button></div>
+      <p class="lb-help">${xfadeOn ? 'Each track blends into the next over 4–10 seconds, timed to where its ending fades. Skipping blends over about a second.' : 'Crossfade is off: each track plays to its end, then the next starts.'}</p>
     </div>
     <div class="lb-sec">
       <span class="lb-label">Browse</span>
@@ -2345,12 +2424,18 @@ paneT.addEventListener('click', e => {
     store.set('nd.filter', tfilter);
     rebuildQueue();
     if (!queue.length) return;
-    qi = 0; cueTrack(queue[0]); playNow();
+    qi = 0; cueTrack(queue[0], true, XF_SKIP); playNow();
     refreshTracks();
     toast(tView === 'all' ? 'Playing everything' : `Playing ${LABEL[tView].toLowerCase()} only`);
     return;
   }
   if (e.target.closest('[data-export]')) { exportAll(); return; }
+  if (e.target.closest('[data-xf]')) {
+    xfadeOn = !xfadeOn; store.set('nd.xfade', xfadeOn);
+    refreshTracks();
+    toast(xfadeOn ? 'Crossfade on' : 'Crossfade off');
+    return;
+  }
   const li = e.target.closest('.lb-item');
   if (!li) return;
   const t = byId.get(li.dataset.id);
@@ -2569,6 +2654,7 @@ window.NIGHTDECK = {
   get tooBright() { return [...banned]; },
   get queue() { return queue.map(t => t.title); },
   get picture() { return curPic?.id; },
+  get decks() { return decks.map(d => ({ playing: d === au, src: (d.getAttribute('src') || '').split('/').pop(), t: +d.currentTime.toFixed(1), paused: d.paused, gain: d._gain ? +d._gain.gain.value.toFixed(2) : null })); },
   show: showPreset, next: () => roll(2.5), export: exportAll, showPicture: id => showPicture(picById.get(id)),
   unbanAll() { banned.clear(); saveBans(); refreshVisuals(); toast('Too-bright list cleared'); }
 };
