@@ -1549,26 +1549,26 @@ float fbm4(vec2 p) {
   return v / 0.9375;
 }
 vec3 pal(float h) { return 0.5 + 0.5 * cos(6.2831853 * (h + vec3(0.0, 0.33, 0.67))); }
-float wisp(vec2 p, float i, float t) {
+// one wisp of smoke. sc: size; tw: thread width; v*: haze; b*: how much
+// of the screen this smoke covers
+float wisp(vec2 p, float i, float t, float sc, float tw, float vlo, float va, float blo, float bhi) {
   float a = i * 2.1 + 0.6 * sin(t * 0.013 + i * 1.7);           // each drifts its own way
-  vec2 q = rot2(a) * p * 1.35 + vec2(t * (0.04 + 0.012 * i), 0.0) + vec2(i * 31.7, i * 13.1);
+  vec2 q = rot2(a) * p * sc + vec2(t * (0.04 + 0.012 * i), 0.0) + vec2(i * 31.7, i * 13.1);
   // two levels of swirl stretch the noise into curling threads
   vec2 w1 = vec2(fbm4(q * 0.9 + vec2(0.0, t * 0.05)), fbm4(q * 0.9 + vec2(4.1, -t * 0.04)));
   vec2 w2 = vec2(fbm4(q * 1.8 + w1 * 3.0 + vec2(1.7, 9.2) + t * 0.03), fbm4(q * 1.8 + w1 * 3.0 + vec2(8.3, 2.8) - t * 0.03));
   float n = fbm4(q * 2.2 + w2 * 3.5);
-  float thread = pow(clamp(1.0 - abs(n - 0.55) * 6.0, 0.0, 1.0), 2.5);   // the wisps follow its contours
-  float veil = smoothstep(0.5, 0.8, n) * 0.12;                          // thin haze between them
-  float body = smoothstep(0.55, 0.78, w2.x * 0.6 + w1.y * 0.6);            // where this smoke lives
+  float thread = pow(clamp(1.0 - abs(n - 0.55) * tw, 0.0, 1.0), 2.5);   // the wisps follow its contours
+  float veil = smoothstep(vlo, vlo + 0.3, n) * va;                         // thin haze between them
+  float body = smoothstep(blo, bhi, w2.x * 0.6 + w1.y * 0.6);              // where this smoke lives
   return clamp(body * (thread + veil), 0.0, 1.0);
 }
-vec3 prismSmoke(vec2 p) {
-  float t = time;
+// colour three smokes: alone, two crossing (the hue between), all three
+vec3 prism3(float c0, float c1, float c2, vec2 p, float t) {
   float h0 = t * 0.018;
-  float c0 = wisp(p, 0.0, t), c1 = wisp(p, 1.0, t), c2 = wisp(p, 2.0, t);
   vec3 b0 = mix(pal(h0), vec3(1.0), 0.1);
   vec3 b1 = mix(pal(h0 + 0.333), vec3(1.0), 0.1);
   vec3 b2 = mix(pal(h0 + 0.667), vec3(1.0), 0.1);
-  // split every point into: one smoke alone, two overlapping, all three
   float e0 = c0 * (1.0 - c1) * (1.0 - c2), e1 = c1 * (1.0 - c0) * (1.0 - c2), e2 = c2 * (1.0 - c0) * (1.0 - c1);
   float o01 = c0 * c1 * (1.0 - c2), o12 = c1 * c2 * (1.0 - c0), o02 = c0 * c2 * (1.0 - c1);
   float all3 = c0 * c1 * c2;
@@ -1576,6 +1576,20 @@ vec3 prismSmoke(vec2 p) {
   col += (pal(h0 + 0.167) * o01 + pal(h0 + 0.5) * o12 + pal(h0 + 0.833) * o02) * 1.45;
   col += mix(pal(h0 + length(p) * 1.5 + t * 0.05), vec3(1.0), 0.45) * all3 * 1.8;
   return col * (0.85 + 0.25 * q2);
+}
+// the front smoke: fine wisps with black between
+vec3 prismSmoke(vec2 p) {
+  float t = time;
+  return prism3(wisp(p, 0.0, t, 1.35, 6.0, 0.5, 0.12, 0.55, 0.78),
+                wisp(p, 1.0, t, 1.35, 6.0, 0.5, 0.12, 0.55, 0.78),
+                wisp(p, 2.0, t, 1.35, 6.0, 0.5, 0.12, 0.55, 0.78), p, t);
+}
+// the middle smoke: fuller and denser, slower, a layer further back
+vec3 prismMid(vec2 p) {
+  float t = time * 0.6 + 400.0;
+  return prism3(wisp(p, 3.0, t, 1.7, 5.0, 0.45, 0.18, 0.4, 0.68),
+                wisp(p, 4.0, t, 1.7, 5.0, 0.45, 0.18, 0.4, 0.68),
+                wisp(p, 5.0, t, 1.7, 5.0, 0.45, 0.18, 0.4, 0.68), p, t);
 }`;
 
   return {
@@ -1733,7 +1747,10 @@ vec3 prismSmoke(vec2 p) {
   vec3 b1 = texture(sampler_blur1, uv).xyz * scale1 + bias1;
   vec3 b2 = texture(sampler_blur2, uv).xyz * scale2 + bias2;
   c += b1 * 0.35 + b2 * (0.35 + 0.2 * q2);
-  c += prismSmoke((uv - 0.5) * aspect.xy) * 0.9;
+  vec2 sp = (uv - 0.5) * aspect.xy;
+  c += prismMid(sp) * 0.5;                    // the fuller smoke, further back
+  vec3 front = prismSmoke(sp);
+  c = c * (1.0 - 0.35 * clamp(max(front.r, max(front.g, front.b)), 0.0, 1.0)) + front * 0.9;
   c = c / (1.0 + 0.25 * c);
   vec2 d = uv - 0.5;
   c *= mix(0.55, 1.0, smoothstep(0.85, 0.25, length(d * vec2(1.0, 1.1))));
